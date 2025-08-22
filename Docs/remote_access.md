@@ -4,7 +4,7 @@
 
 To access your Google Cloud VM from any device without navigating to the Google Cloud client in the web browser, by utilizing your terminal.
 
-## Procedure
+## Procedure: Connect to VM remotely
 
 1. Open the terminal on your device.
 
@@ -41,3 +41,26 @@ ssh vm_username@external_ip
 
 9. To exit the VM, use the command `exit`.
 
+## Procedure: Create SSH nicknames
+
+### Purpose
+
+This is a way to create nicknames for your SSH connections, so you don't have to type out the full command and IP address every time.
+
+1. Open or create the config file on your local computer, specifically located in the `.ssh` directory of your user home folder. 
+
+2. Add connection details. The following is the format for each connection in this file:
+
+```bash
+Host <nickname>
+    HostName <external IP address of remote connection>
+    User <username on remote connection>
+    Port 22
+    IdentityFile <typically ~/.ssh/id_rsa>
+```
+
+3. Save and exit the file. Now, you can connect to the remote machine using the nickname such as:
+
+```bash
+ssh school_vm
+```
