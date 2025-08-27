@@ -11,7 +11,7 @@ mkdir Projects
 cd Projects/
 ```
 
-3. Clone the GitHub repository to your VM
+3. Clone the GitHub repository to your VM. This may require authentication.
 
 ```bash
 # Clone the repository to your VM
