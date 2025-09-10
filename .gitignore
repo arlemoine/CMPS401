@@ -1,2 +1,12 @@
+# Combination to ignore all files without extensions
+
+## Ignore All
+*
+## Unignore all with extensions
+!*.*
+## Unignore all dirs
+!*/
+
 # Rust compilation data
 Rust/**/target/
+
