@@ -10,3 +10,5 @@
 # Rust compilation data
 Rust/**/target/
 
+# Fortran compilation data
+*.out
