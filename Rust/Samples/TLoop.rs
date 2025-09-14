@@ -1,3 +1,14 @@
+/*
+    This Rust file demonstrates the use of different loop constructs: loop, while, and for.
+    It includes examples of infinite loops with break conditions, using while loops,
+    and iterating over ranges and arrays using for loops.
+
+    To compile and run this Rust file:
+    $ rustc TLoop.rs
+    $ ./TLoop
+
+*/
+
 fn main() {
     // loop
 

@@ -1,3 +1,32 @@
+/*
+    This Rust program demonstrates various variable types, mutability, type inference, type casting, and basic operations.
+    It covers signed and unsigned integers, floating-point numbers, booleans, characters, strings, tuples, and arrays.
+    It also illustrates mutable vs immutable variables, type casting, and basic arithmetic operations.
+
+    Primitive Types:
+    - Signed Integers: i8, i16, i32, i64, i128
+    - Unsigned Integers: u8, u16, u32, u64, u128
+    - Floating Point Numbers: f32, f64
+    - Boolean: bool
+    - Character: char
+
+    Compound Types:
+    - Tuple: (i32, f64, char)
+    - Array: [i32; 5]
+    - Slice: &[i32]
+    - String: String
+    - Note: Rust does not have a built-in string type; it uses the String type from the standard library.
+
+    Mutability:
+    - All variables are immutable by default. Use 'mut' keyword to make any variable mutable.
+
+
+    To compile and run this Rust file:
+    $ rustc TVar.rs
+    $ ./TVar
+
+*/
+
 fn main() {
     // Signed integers of different sizes
     // i8, i16, i32, i64, i128
@@ -33,6 +62,8 @@ fn main() {
     let p: char = '🦀';
     println!("Characters: {}, {}", o, p);
 
+
+
     // Tuple
     let q: (i32, f64, char) = (42, 3.14, 'R');
     println!("Tuple: {:?}", q); // Debug print
@@ -43,31 +74,30 @@ fn main() {
     // Array
     let r: [i32; 5] = [1, 2, 3, 4, 5];
     println!("Array: {:?}", r); // Debug print
-    println!("Accessed Array element: {}", r[0]); // Accessing elements
+    let first_element = r[0]; // Accessing elements
+    let n: u128 = r.len(); // Array length
+    r[2] = 10; // Modifying an element
     let s: [i32; 5] = [0; 5]; // Array of 5 elements initialized to 0
     println!("Initialized Array: {:?}", s);
+
+    // Slice
+    let t: &[i32] = &r; // Reference to an array (slice)
+    println!("Array Slice: {:?}", t);
 
     // String
     let mut u: String = String::from("hello");
     u.push_str(", Rust!");
     println!("String: {}", u);
 
+
+
     // mutable vs immutable
     let v: i32 = 10; // Immutable by default
-    //v = 20; // This would cause a compile-time error
+    //v += 20; // This would cause a compile-time error
     let mut w: i32 = 10; // Mutable variable
     println!("Before update: {}", w);
-    w = 20; // This is allowed
+    w += 20; // This is allowed
     println!("Immutable: {}, Mutable: {}", v, w);
-
-    // Constant
-    const MAX_POINTS: u32 = 100_000;
-    println!("Constant MAX_POINTS: {}", MAX_POINTS);
-
-    // Shadowing
-    let a: i32 = 5;
-    let a: i32 = a + 1; // Shadowing the previous 'a
-    println!("Shadowed a: {}", a);
 
     // Type inference
     let b = 10; // Rust infers this as i32

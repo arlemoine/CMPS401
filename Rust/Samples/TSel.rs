@@ -1,3 +1,27 @@
+/*
+    This Rust program demonstrates conditional statements including if, if-else, and match.
+    It shows relational operations, logical operations, and how to use these constructs.
+
+    Relational Operators:
+    - Equal to: ==
+    - Not equal to: !=
+    - Greater than: >
+    - Less than: <
+    - Greater than or equal to: >=
+    - Less than or equal to: <=
+
+    Logical Operators:
+    - AND: &&
+    - OR: ||
+    - NOT: !
+
+
+    To compile and run this Rust file:
+    $ rustc TSel.rs
+    $ ./TSel
+
+*/
+
 use std::io;
 
 fn main() {
