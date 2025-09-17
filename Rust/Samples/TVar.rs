@@ -62,8 +62,6 @@ fn main() {
     let p: char = '🦀';
     println!("Characters: {}, {}", o, p);
 
-
-
     // Tuple
     let q: (i32, f64, char) = (42, 3.14, 'R');
     println!("Tuple: {:?}", q); // Debug print
@@ -72,10 +70,10 @@ fn main() {
     println!("Accessed Tuple element: {}", q.0); // Accessing elements
 
     // Array
-    let r: [i32; 5] = [1, 2, 3, 4, 5];
+    let mut r: [i32; 5] = [1, 2, 3, 4, 5];
     println!("Array: {:?}", r); // Debug print
     let first_element = r[0]; // Accessing elements
-    let n: u128 = r.len(); // Array length
+    let n: usize = r.len(); // Array length
     r[2] = 10; // Modifying an element
     let s: [i32; 5] = [0; 5]; // Array of 5 elements initialized to 0
     println!("Initialized Array: {:?}", s);
@@ -89,11 +87,9 @@ fn main() {
     u.push_str(", Rust!");
     println!("String: {}", u);
 
-
-
     // mutable vs immutable
     let v: i32 = 10; // Immutable by default
-    //v += 20; // This would cause a compile-time error
+                     //v += 20; // This would cause a compile-time error
     let mut w: i32 = 10; // Mutable variable
     println!("Before update: {}", w);
     w += 20; // This is allowed
@@ -115,18 +111,19 @@ fn main() {
     let product = 4 * 30; // Multiplication
     let quotient = 56.7 / 32.2; // Division
     let remainder = 43 % 5; // Modulus
-    println!("Arithmetic operations: {}, {}, {}, {}, {}", sum, difference, product, quotient, remainder);
+    println!(
+        "Arithmetic operations: {}, {}, {}, {}, {}",
+        sum, difference, product, quotient, remainder
+    );
 
     // Compound assignment operators
     let mut f = 5;
     f += 10; // f = f + 10
-    //f++; // Rust does not support ++ operator
-    //f--; // Rust does not support -- operator
-    f -= 2;  // f = f - 2
-    f *= 3;  // f = f * 3
-    f /= 4;  // f = f / 4
-    f %= 3;  // f = f % 3
+             //f++; // Rust does not support ++ operator
+             //f--; // Rust does not support -- operator
+    f -= 2; // f = f - 2
+    f *= 3; // f = f * 3
+    f /= 4; // f = f / 4
+    f %= 3; // f = f % 3
     println!("Compound assignment result: {}", f);
-
-
-}   
+}
