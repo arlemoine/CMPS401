@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CMPS401 PHP Quiz</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        form {
+            min-width: 600px;
+            min-height: 100px;
+            padding: 20px;
+        }
+        .header, .tail-section {
+            border: solid 1px black;
+            padding: 8px;
+            margin: 4px;
+            text-align: center;
+        }
+        .main-section {
+            border: solid 1px black;
+            padding: 8px;
+            margin: 4px;
+            text-align: left;
+        }
+        .answers {
+            padding: 8px;
+            margin: 4px;
+            text-align: left;
+        }
+        .access-key {
+            text-decoration: underline !important;
+        }
+        .btn-submit {
+            margin: 8px 8px 8px 8px;
+        }
+    </style>
+</head>
+<body>
+    <form action="P3.php" method="post">
+        <div class="header">
+            <h1>CMPS401 PHP Quiz</h1>
+            First Name: 
+            <input type="text" name="first_name">
+            &nbsp;&nbsp;&nbsp;&nbsp;
+            Last Name: 
+            <input type="text" name="last_name">
+        </div>
+        <div class="main-section">
+            <ol class = "quiz-questions">
+                <li>
+                    <p>What does PHP stand for?</p>
+                    <div class="option">
+                        <input type="radio" id="q1-a" name="answers[0]" value="a">
+                        <label for="q1-a">(a) PHP: Hypertext Preprocessor</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q1-b" name="answers[0]" value="b">
+                        <label for="q1-b">(b) Personal Hypertext Processor</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q1-c" name="answers[0]" value="c">
+                        <label for="q1-c">(c) Private Home Page</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q1-d" name="answers[0]" value="d">
+                        <label for="q1-d">(d) Personal Home Page</label>
+                    </div>
+                </li>
+                <li>
+                    <p>How do you write "Hello World" in PHP</p>
+                    <div class="option">
+                        <input type="radio" id="q2-a" name="answers[1]" value="a">
+                        <label for="q2-a">(a) "Hello World";</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q2-b" name="answers[1]" value="b">
+                        <label for="q2-b">(b) Document.Write("Hello World");</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q2-c" name="answers[1]" value="c">
+                        <label for="q2-c">(c) echo "Hello World";</label>
+                    </div>
+                </li>
+                <li>
+                    <p>All variables in PHP start with which symbol?</p>
+                    <div class="option">
+                        <input type="radio" id="q3-a" name="answers[2]" value="a">
+                        <label for="q3-a">(a) $</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q3-b" name="answers[2]" value="b">
+                        <label for="q3-b">(b) @</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q3-c" name="answers[2]" value="c">
+                        <label for="q3-c">(c) %</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q3-d" name="answers[2]" value="d">
+                        <label for="q3-d">(d) &amp;</label>
+                    </div>
+                </li>
+                <li>
+                    <p>What is the correct way to add 1 to the $count variable?</p>
+                    <div class="option">
+                        <input type="radio" id="q4-a" name="answers[3]" value="a">
+                        <label for="q4-a">(a) $count++;</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q4-b" name="answers[3]" value="b">
+                        <label for="q4-b">(b) $count =+ 1</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q4-c" name="answers[3]" value="c">
+                        <label for="q4-c">(c) ++count</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q4-d" name="answers[3]" value="d">
+                        <label for="q4-d">(d) count++;</label>
+                    </div>
+                </li>
+                <li>
+                    <p>How do you get information from a form that is submitted using the "post" method?</p>
+                    <div class="option">
+                        <input type="radio" id="q5-a" name="answers[4]" value="a">
+                        <label for="q5-a">(a) Request.Form;</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q5-b" name="answers[4]" value="b">
+                        <label for="q5-b">(b) $_GET[];</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q5-c" name="answers[4]" value="c">
+                        <label for="q5-c">(c) $_POST[];</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q5-d" name="answers[4]" value="d">
+                        <label for="q5-d">Request.QueryString;</label>
+                    </div>
+                </li>
+                <li>
+                    <p>When using the POST method, variables are displayed in the URL:</p>
+                    <div class="option">
+                        <input type="radio" id="q6-a" name="answers[5]" value="a">
+                        <label for="q6-a">True</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q6-b" name="answers[5]" value="b">
+                        <label for="q6-b">False</label>
+                    </div>
+                </li>
+                <li>
+                    <p>In PHP you can use both single quotes ('') and double quotes ("") for strings:</p>
+                    <div class="option">
+                        <input type="radio" id="q7-a" name="answers[6]" value="a">
+                        <label for="q7-a">True</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q7-b" name="answers[6]" value="b">
+                        <label for="q7-b">False</label>
+                    </div>
+                </li>
+                <li>
+                    <p>What is the correct way to create a function in PHP?</p>
+                    <div class="option">
+                        <input type="radio" id="q8-a" name="answers[7]" value="a">
+                        <label for="q8-a">(a) create myFunction()</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q8-b" name="answers[7]" value="b">
+                        <label for="q8-b">(b) new_function myFunction()</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q8-c" name="answers[7]" value="c">
+                        <label for="q8-c">(c) function myFunction()</label>
+                    </div>
+                </li>
+                <li>
+                    <p>What is the correct way to connect to a MySQL database?</p>
+                    <div class="option">
+                        <input type="radio" id="q9-a" name="answers[8]" value="a">
+                        <label for="q9-a">(a) mysql_connect("localhost");</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q9-b" name="answers[8]" value="b">
+                        <label for="q9-b">(b) mysql_query("localhost");</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q9-c" name="answers[8]" value="c">
+                        <label for="q9-c">(c) connect_mysql("localhost");</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q9-d" name="answers[8]" value="d">
+                        <label for="q9-d">(d) mysql_open("localhost");</label>
+                    </div>
+                </li>
+                <li>
+                    <p>
+                    The following HTML code will direct form information and control to what file?<br><br>
+                    <code>&lt;form action="P3.php" method="post"&gt;</code> 
+                    </p>
+                    <div class="option">
+                        <input type="text" name="answers[9]">&nbsp;&nbsp; <em>(Note: case-sensitive)</em>
+                    </div>
+                </li>
+            </ol>
+        </div>
+        <div class="tail-section">
+            <button class="btn-submit" type="submit" name="submit" accesskey="s">
+                <span class="access-key">S</span>ubmit Answers
+            </button>
+        </div>
+        <p class="answers">
+            Answer: 1. a; 2, c; 3. a; 4. a; 5. c; 6. b; 7. a; 8. c; 9. a; 10. "P3.php"
+        </p>
+    </form>
+</body>
+</html>
+
