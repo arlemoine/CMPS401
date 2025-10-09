@@ -30,13 +30,16 @@ type Actions = {
 export const useStore = create<State & Actions>((set) => ({
   status: "disconnected",
   serverVersion: undefined,
-  displayName: "",       
+  displayName: localStorage.getItem("ttt.displayName") ?? "",       
   matchId: null,
   logs: [],
 
   setStatus: (s) => set({ status: s }),
   setServerVersion: (v) => set({ serverVersion: v }),
-  setDisplayName: (name) => set({ displayName: name }),
+  setDisplayName: (name) => {
+    localStorage.setItem("ttt.displayName", name);              // persist
+    set({ displayName: name });
+  },
   setMatchId: (id) => set({ matchId: id }),
   log: (line) => set((st) => ({ logs: [...st.logs, line] })),
   reset: () =>
