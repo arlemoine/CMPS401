@@ -56,6 +56,7 @@ npm run dev
 
 ## Next Steps
 
+- See `docs/architecture.md` for design details.
 - Make sure you can run both **server** and **client** locally.  
 - Begin implementing something from the suggested work list.
 - Regularly commit and push your changes to the repo.
