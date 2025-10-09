@@ -46,7 +46,7 @@ npm run dev
 
 ---
 
-### Suggested Work
+## Suggested Work
 
 - **Server Side** → WebSocket endpoints, game logic, state handling (Rust).  
 - **Client Side** → React UI (Tic-Tac-Toe board, chat, game status).  
@@ -54,7 +54,7 @@ npm run dev
 
 ---
 
-### Next Steps
+## Next Steps
 
 - Make sure you can run both **server** and **client** locally.  
 - Begin implementing something from the suggested work list.
