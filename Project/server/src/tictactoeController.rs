@@ -179,8 +179,8 @@ impl Controller {
                         // Invalid spot format, continue loop
                             println!("Invalid input format. Enter a single number 0-8.");
                             thread::sleep(Duration::from_millis(1000));
-                        }
                     }
+                    
                 }
             },
             Player::Player2 => {

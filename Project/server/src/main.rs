@@ -110,17 +110,17 @@ async fn handle_socket(mut socket: WebSocket) {
     info!("websocket closed");
 }
 
-/// ---- Main method ----
+// /// ---- Main method ----
 
-/// The main entry function for the Tic-Tac-Toe terminal application.
-fn main() {
-    let mut controller = Controller::new();
+// /// The main entry function for the Tic-Tac-Toe terminal application.
+// fn main() {
+//     let mut controller = Controller::new();
     
-    // Delegate the terminal menu handling to the Controller.
-    // The Controller will set the chosen game mode internally.
-    // If run_menu returns true, the user wants to play. If false, the user quit.
-    if controller.run_menu() {
-        // Start the main game loop
-        controller.new_game_loop();
-    }
-}
+//     // Delegate the terminal menu handling to the Controller.
+//     // The Controller will set the chosen game mode internally.
+//     // If run_menu returns true, the user wants to play. If false, the user quit.
+//     if controller.run_menu() {
+//         // Start the main game loop
+//         controller.new_game_loop();
+//     }
+// }
