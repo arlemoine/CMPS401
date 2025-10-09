@@ -2,9 +2,7 @@
 
 Monorepo for our Survey of Programming Languages group project.
 
-## Team Onboarding Guide
-
-### Repository Structure
+## Repository Structure
 
 ```text
 Project/
@@ -21,9 +19,9 @@ Project/
 
 ---
 
-### Local Setup
+## Local Setup
 
-#### Backend (server)
+### Backend (server)
 
 ```bash
 cd Project/server
@@ -34,7 +32,7 @@ cargo run
 - For now, prints **Hello, world!**.  
 - Dependencies go in `Cargo.toml`.  
 
-#### Frontend (client)
+### Frontend (client)
 
 ```bash
 cd Project/client
@@ -43,23 +41,22 @@ npm run dev
 ```
 
 - Starts the dev server at <http://localhost:5173>.  
-- Currently shows the Vite starter page.  
+- Currently shows a Mantine starter page.  
 - Dependencies go in `package.json`.  
 
 ---
 
-### Suggested Roles
+### Suggested Work
 
-- **Server lead** → WebSocket endpoints, game logic, state handling (Rust).  
-- **Client lead** → React UI (Tic-Tac-Toe board, chat, game status).  
-- **Protocol lead** → Define and update JSON message formats (join game, moves, chat).  
-- **Docs/testing lead** → Maintain `docs/` and run end-to-end tests.  
+- **Server Side** → WebSocket endpoints, game logic, state handling (Rust).  
+- **Client Side** → React UI (Tic-Tac-Toe board, chat, game status).  
+- **Shared** → Message protocol design, UI/UX decisions, documentation.
 
 ---
 
 ### Next Steps
 
 - Make sure you can run both **server** and **client** locally.  
-- Decide who will own each role.  
-- Begin drafting the **message protocol** in `docs/protocol.md`.  
-- Start building the **layout skeleton** (client) and **WebSocket endpoint** (server).
+- Begin implementing something from the suggested work list.
+- Regularly commit and push your changes to the repo.
+- Update `docs/` with new useful information for the team or for presenting.
