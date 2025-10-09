@@ -12,3 +12,23 @@ Rust/**/target/
 
 # Fortran compilation data
 *.out
+
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+
+# Rust
+target/
+Cargo.lock
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Misc
+.env
+.env.*
