@@ -1,10 +1,22 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Container, Title, Button } from "@mantine/core";
 import { ws } from "./api/ws";
 
 function App() {
+    const [status, setStatus] = useState("disconnected");
+
     useEffect(() => {
         ws.connect();
+        const offOpen = ws.onOpen(() => setStatus("open"));
+        const offClose = ws.onClose(() => setStatus("disconnected"));
+        const offMsg = ws.onMessage((msg) => {
+            // update Zustand state based on msg
+        });
+        return () => {
+            offOpen();
+            offClose();
+            offMsg();
+        };
     }, []);
 
     return (

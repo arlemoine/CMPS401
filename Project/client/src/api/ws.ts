@@ -1,5 +1,6 @@
 // Project/client/src/api/ws.ts
-// StrictMode + HMR-safe WebSocket singleton with queue & optional reconnect.
+// StrictMode + HMR-safe WebSocket singleton with queue, minimal reconnect,
+// and a small pub/sub API to avoid repetitive single handlers.
 
 export type ClientMsg =
   | { type: "join"; payload: { displayName: string } }
@@ -12,14 +13,18 @@ export type ServerMsg =
 
 const WS_URL = import.meta.env.VITE_WS_URL as string;
 
+export type Unsubscribe = () => void;
 export type WSHandle = {
-  socket: WebSocket | null;
+  readonly socket: WebSocket | null;
   connect: () => void;
   send: (msg: ClientMsg) => void;
   close: () => void;
-  onMessage: (handler: (msg: ServerMsg) => void) => void;
+  onMessage: (handler: (msg: ServerMsg) => void) => Unsubscribe;
+  onOpen: (handler: () => void) => Unsubscribe;
+  onClose: (handler: (code: number, reason: string) => void) => Unsubscribe;
 };
 
+// --- HMR/StrictMode-proof singleton on window ---
 declare global {
   interface Window {
     __TTT_WS__?: ReturnType<typeof createWS>;
@@ -28,19 +33,27 @@ declare global {
 
 function createWS(): WSHandle {
   let socket: WebSocket | null = null;
-  let onMessageHandler: ((msg: ServerMsg) => void) | null = null;
-  let outboundQueue: ClientMsg[] = [];
   let connecting = false;
   let reconnectTimer: number | null = null;
   let retryMs = 0;
+  let outboundQueue: ClientMsg[] = [];
+
+  // Pub/Sub sets (multiple listeners; unsub returns a disposer)
+  const messageHandlers = new Set<(msg: ServerMsg) => void>();
+  const openHandlers = new Set<() => void>();
+  const closeHandlers = new Set<(code: number, reason: string) => void>();
+
+  const isOpen = () => socket?.readyState === WebSocket.OPEN;
+  const isConnecting = () => socket?.readyState === WebSocket.CONNECTING || connecting;
 
   const flush = (s: WebSocket) => {
+    if (outboundQueue.length === 0) return;
     for (const m of outboundQueue) s.send(JSON.stringify(m));
     outboundQueue = [];
   };
 
   const scheduleReconnect = () => {
-    // backoff: 0ms, 250ms, 500ms, 1000ms (cap)
+    // backoff: 250ms, 500ms, 1000ms (cap)
     retryMs = Math.min(retryMs ? retryMs * 2 : 250, 1000);
     if (reconnectTimer) return;
     reconnectTimer = window.setTimeout(() => {
@@ -49,12 +62,14 @@ function createWS(): WSHandle {
     }, retryMs);
   };
 
+  const addHandler = <T>(set: Set<T>, h: T): Unsubscribe => {
+    set.add(h);
+    return () => set.delete(h);
+  };
+
   const api: WSHandle = {
     get socket() {
       return socket;
-    },
-    set socket(_: WebSocket | null) {
-      // no external sets
     },
 
     connect() {
@@ -62,58 +77,57 @@ function createWS(): WSHandle {
         console.error("[ws] VITE_WS_URL missing/invalid:", WS_URL);
         return;
       }
-      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-        return; // already open or in-flight
-      }
-      if (connecting) return;
-      connecting = true;
+      if (isOpen() || isConnecting()) return; // already open or in-flight
 
+      connecting = true;
       const s = new WebSocket(WS_URL);
 
       s.onopen = () => {
-        console.log("[ws] open:", WS_URL);
         socket = s;
         connecting = false;
         retryMs = 0; // reset backoff
+        // Notify and flush after we are officially open
+        openHandlers.forEach((h) => h());
         flush(s);
+        console.log("[ws] open:", WS_URL);
       };
 
       s.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data) as ServerMsg;
+          messageHandlers.forEach((h) => h(data));
           console.log("[ws] <=", data);
-          onMessageHandler?.(data);
         } catch (e) {
           console.warn("[ws] non-JSON:", ev.data, e);
         }
       };
 
       s.onclose = (ev) => {
-        console.log("[ws] closed", ev.code, ev.reason);
         if (socket === s) socket = null;
         connecting = false;
-        // reconnect in dev; avoid flapping on hard errors
+        closeHandlers.forEach((h) => h(ev.code, ev.reason));
+        console.log("[ws] closed", ev.code, ev.reason);
+        // reconnect in dev for common transient codes
         if (ev.code === 1006 || ev.code === 1001 || ev.code === 1000) {
           scheduleReconnect();
         }
       };
 
       s.onerror = (ev) => {
-        // Don’t throw scary errors—WS will close and schedule reconnect
+        // The socket will shortly close and trigger onclose; keep logs minimal
         console.warn("[ws] error", ev);
       };
     },
 
     send(msg: ClientMsg) {
       const s = socket;
-      if (!s || s.readyState !== WebSocket.OPEN) {
+      if (!s || !isOpen()) {
         outboundQueue.push(msg);
-        // Try to connect if not already
-        if (!connecting) this.connect();
+        if (!isConnecting()) this.connect();
         return;
       }
-      console.log("[ws] =>", msg);
       s.send(JSON.stringify(msg));
+      console.log("[ws] =>", msg);
     },
 
     close() {
@@ -126,8 +140,16 @@ function createWS(): WSHandle {
       connecting = false;
     },
 
-    onMessage(handler: (msg: ServerMsg) => void) {
-      onMessageHandler = handler;
+    onMessage(handler: (msg: ServerMsg) => void): Unsubscribe {
+      return addHandler(messageHandlers, handler);
+    },
+
+    onOpen(handler: () => void): Unsubscribe {
+      return addHandler(openHandlers, handler);
+    },
+
+    onClose(handler: (code: number, reason: string) => void): Unsubscribe {
+      return addHandler(closeHandlers, handler);
     },
   };
 
