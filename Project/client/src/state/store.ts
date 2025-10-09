@@ -30,7 +30,7 @@ type Actions = {
 export const useStore = create<State & Actions>((set) => ({
   status: "disconnected",
   serverVersion: undefined,
-  displayName: "Adam",       // default for quick testing
+  displayName: "",       
   matchId: null,
   logs: [],
 

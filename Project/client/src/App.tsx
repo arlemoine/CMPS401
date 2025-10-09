@@ -1,45 +1,61 @@
 import { useEffect, useState } from "react";
-import { Container, Title, Button } from "@mantine/core";
+import { Container, Title } from "@mantine/core";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { ws } from "./api/ws";
+import CreateJoin from "./pages/CreateJoin";
+import Match from "./pages/Match";
 
-function App() {
-    const [status, setStatus] = useState("disconnected");
+function AppRoutes() {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("disconnected");
+  const [_serverVersion, setServerVersion] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
-        ws.connect();
-        const offOpen = ws.onOpen(() => setStatus("open"));
-        const offClose = ws.onClose(() => setStatus("disconnected"));
-        const offMsg = ws.onMessage((msg) => {
-            // update Zustand state based on msg
-        });
-        return () => {
-            offOpen();
-            offClose();
-            offMsg();
-        };
-    }, []);
+  useEffect(() => {
+    ws.connect();
 
-    return (
-        <Container size="sm" style={{ paddingTop: 40 }}>
-            <Title order={2} ta="center" mb="lg">
-                Tic-Tac-Toe Prototype
-            </Title>
+    const offOpen = ws.onOpen(() => setStatus("open"));
+    const offClose = ws.onClose(() => setStatus("disconnected"));
+    const offMsg = ws.onMessage((msg) => {
+      switch (msg.type) {
+        case "hello":
+          setServerVersion(msg.payload.serverVersion);
+          break;
+        case "match_created": {
+          const id = msg.payload.matchId;
+          navigate(`/match/${id}`);
+          break;
+        }
+        case "error":
+          // TODO: surface via Mantine notifications
+          console.warn("server error", msg.payload);
+          break;
+      }
+    });
 
-            <Button
-                fullWidth
-                color="teal"
-                radius="md"
-                size="md"
-                onClick={() => {
-                    // Test sending join + create_match messages
-                    ws.send({ type: "join", payload: { displayName: "Adam" } });
-                    ws.send({ type: "create_match", payload: {} });
-                }}
-            >
-                Connect & Create Match
-            </Button>
-        </Container>
-    );
+    return () => {
+      offOpen();
+      offClose();
+      offMsg();
+    };
+  }, [navigate]);
+
+  return (
+    <Routes>
+      <Route path="/" element={<CreateJoin />} />
+      <Route path="/match/:id" element={<Match />} />
+    </Routes>
+  );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Container size="sm" style={{ paddingTop: 40 }}>
+        <Title order={2} ta="center" mb="lg">
+          Tic-Tac-Toe Prototype
+        </Title>
+        <AppRoutes />
+      </Container>
+    </BrowserRouter>
+  );
+}
