@@ -155,7 +155,7 @@ Player B refreshes             → {resync} → server replies with latest {stat
 - **Dev:**
 
   - Server: `ws://localhost:3001/ws` is the websocket endpoint that the React app connects to and `GET http://localhost:3001/health` is the health check endpoint.
-  - Client: `http://localhost:5173` runs the React app, configure `VITE_WS_URL=ws://localhost:3001/ws` to connect to the backend.
+  - Client: `http://localhost:5173` runs the React app, .env defines: `VITE_WS_URL=ws://localhost:3001/ws` to connect to the backend.
 
 ## 9) Folder Structures (target)
 
