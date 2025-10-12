@@ -24,8 +24,9 @@ function AppRoutes() {
           setServerVersion(msg.payload.serverVersion);
           break;
         case "match_created": {
-          const id = msg.payload.matchId;
-          setMatchId(id);
+          const { matchId, you } = msg.payload;
+          setMatchId(matchId);
+          setMe(you);
           // Navigation will happen via useEffect in CreateJoin
           break;
         }

@@ -15,7 +15,7 @@ export type Player = {
 
 export type ServerMsg =
   | { type: "hello"; payload: { serverVersion: string } }
-  | { type: "match_created"; payload: { matchId: string } }
+  | { type: "match_created"; payload: { matchId: string; you: Player } }
   | { type: "joined_match"; payload: { matchId: string; you: Player } }
   | { type: "state_update"; payload: { matchId: string; players: Player[]; status: string } }
   | { type: "error"; payload: { code: string; message: string } };

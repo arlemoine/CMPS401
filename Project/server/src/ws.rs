@@ -79,6 +79,7 @@ async fn handle_socket(socket: WebSocket, registry: MatchRegistry) {
                         // Ack creator
                         let out = ServerMsg::MatchCreated {
                             match_id: match_id.clone(),
+                            you: creator,
                         };
                         let s = serde_json::to_string(&out).unwrap();
                         if to_ws_tx.send(Message::Text(s.into())).is_err() {
@@ -121,11 +122,8 @@ async fn handle_socket(socket: WebSocket, registry: MatchRegistry) {
                         continue;
                     }
 
-                    // Mutate room and broadcast
-                    let (pid, name) = (
-                        player_id.as_ref().unwrap().clone(),
-                        display_name.as_ref().unwrap().clone(),
-                    );
+                    let name = display_name.as_ref().unwrap().clone();
+                    let pid = player_id.as_ref().unwrap().clone();
 
                     // Acquire write lock, add O, then subscribe this socket
                     let mut reg = registry.write().await;

@@ -50,6 +50,7 @@ pub enum ServerMsg {
     MatchCreated {
         #[serde(rename = "matchId")]
         match_id: String,
+        you: Player,
     },
 
     #[serde(rename = "error")]
