@@ -1,31 +1,50 @@
-import { useState } from "react";
-import { Button, Group, TextInput, Title, Stack } from "@mantine/core";
+import { useState, useEffect } from "react";
+import { Button, Group, TextInput, Title, Stack, Alert } from "@mantine/core";
 import { ws } from "../api/ws";
 import { useStore } from "../state/store";
 import { useNavigate } from "react-router-dom";
 
 export default function CreateJoin() {
   const navigate = useNavigate();
-  const { displayName, setDisplayName, setMatchId } = useStore();
+  const { displayName, setDisplayName, matchId } = useStore();
   const [joinCode, setJoinCode] = useState("");
+  const [error, setError] = useState("");
+
+  // Navigate when matchId is set by server response
+  useEffect(() => {
+    if (matchId) {
+      navigate(`/match/${matchId}`);
+    }
+  }, [matchId, navigate]);
 
   const onCreate = () => {
+    if (!displayName.trim()) {
+      setError("Please enter a display name");
+      return;
+    }
+    setError("");
     ws.send({ type: "join", payload: { displayName } });
     ws.send({ type: "create_match", payload: {} });
-    // navigation actually happens when we receive match_created in App.tsx listener
+    // navigation happens in useEffect when matchId is set
   };
 
   const onJoin = () => {
-    // we'll wire join_match soon; for now redirect using the code
-    if (joinCode.trim()) {
-      setMatchId(joinCode.trim().toUpperCase());
-      navigate(`/match/${joinCode.trim().toUpperCase()}`);
+    if (!joinCode.trim() || !displayName.trim()) {
+      setError("Please enter both display name and match code");
+      return;
     }
+    setError("");
+    const matchIdUpper = joinCode.trim().toUpperCase();
+    ws.send({ type: "join", payload: { displayName } });
+    ws.send({ type: "join_match", payload: { matchId: matchIdUpper } });
+    // navigation happens in useEffect when server confirms
   };
 
   return (
     <Stack gap="md" mt="lg">
       <Title order={3}>Start or Join a Match</Title>
+
+      {error && <Alert color="red">{error}</Alert>}
 
       <TextInput
         label="Display name"

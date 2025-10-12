@@ -1,52 +1,41 @@
 // Project/client/src/state/store.ts
 import { create } from "zustand";
+import type { Player } from "../api/ws";
 
-export type ConnStatus = "disconnected" | "connecting" | "open";
-
-type State = {
-  // connection
-  status: ConnStatus;
-
-  // server info
-  serverVersion?: string;
-
-  // me + match
+interface GameStore {
+  // User identity
   displayName: string;
-  matchId: string | null;
-
-  // dev logs (handy while prototyping)
-  logs: string[];
-};
-
-type Actions = {
-  setStatus: (s: ConnStatus) => void;
-  setServerVersion: (v: string) => void;
   setDisplayName: (name: string) => void;
-  setMatchId: (id: string | null) => void;
-  log: (line: string) => void;
-  reset: () => void;
-};
 
-export const useStore = create<State & Actions>((set) => ({
-  status: "disconnected",
-  serverVersion: undefined,
-  displayName: localStorage.getItem("ttt.displayName") ?? "",       
-  matchId: null,
-  logs: [],
+  // Current match
+  matchId: string;
+  setMatchId: (id: string) => void;
 
-  setStatus: (s) => set({ status: s }),
-  setServerVersion: (v) => set({ serverVersion: v }),
-  setDisplayName: (name) => {
-    localStorage.setItem("ttt.displayName", name);              // persist
-    set({ displayName: name });
-  },
+  // Match state
+  players: Player[];
+  setPlayers: (players: Player[]) => void;
+
+  matchStatus: string; // "WAITING", "IN_PROGRESS", "FINISHED"
+  setMatchStatus: (status: string) => void;
+
+  // Current player info
+  me: Player | null;
+  setMe: (player: Player | null) => void;
+}
+
+export const useStore = create<GameStore>((set) => ({
+  displayName: "",
+  setDisplayName: (name) => set({ displayName: name }),
+
+  matchId: "",
   setMatchId: (id) => set({ matchId: id }),
-  log: (line) => set((st) => ({ logs: [...st.logs, line] })),
-  reset: () =>
-    set({
-      status: "disconnected",
-      serverVersion: undefined,
-      matchId: null,
-      logs: [],
-    }),
+
+  players: [],
+  setPlayers: (players) => set({ players }),
+
+  matchStatus: "WAITING",
+  setMatchStatus: (status) => set({ matchStatus: status }),
+
+  me: null,
+  setMe: (player) => set({ me: player }),
 }));

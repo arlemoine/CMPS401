@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Container, Title } from "@mantine/core";
+import { Container, Title, Alert } from "@mantine/core";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { ws } from "./api/ws";
+import { useStore } from "./state/store";
 import CreateJoin from "./pages/CreateJoin";
 import Match from "./pages/Match";
 
@@ -9,6 +10,8 @@ function AppRoutes() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("disconnected");
   const [_serverVersion, setServerVersion] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string>("");
+  const { setMatchId, setPlayers, setMatchStatus, setMe } = useStore();
 
   useEffect(() => {
     ws.connect();
@@ -22,12 +25,27 @@ function AppRoutes() {
           break;
         case "match_created": {
           const id = msg.payload.matchId;
-          navigate(`/match/${id}`);
+          setMatchId(id);
+          // Navigation will happen via useEffect in CreateJoin
+          break;
+        }
+        case "joined_match": {
+          const { matchId, you } = msg.payload;
+          setMatchId(matchId);
+          setMe(you);
+          break;
+        }
+        case "state_update": {
+          const { matchId, players, status } = msg.payload;
+          setMatchId(matchId);
+          setPlayers(players);
+          setMatchStatus(status);
           break;
         }
         case "error":
-          // TODO: surface via Mantine notifications
           console.warn("server error", msg.payload);
+          setError(`${msg.payload.code}: ${msg.payload.message}`);
+          setTimeout(() => setError(""), 5000); // Clear after 5s
           break;
       }
     });
@@ -37,13 +55,19 @@ function AppRoutes() {
       offClose();
       offMsg();
     };
-  }, [navigate]);
+  }, [navigate, setMatchId, setPlayers, setMatchStatus, setMe]);
 
   return (
-    <Routes>
-      <Route path="/" element={<CreateJoin />} />
-      <Route path="/match/:id" element={<Match />} />
-    </Routes>
+    <>
+      {error && <Alert color="red" mb="md">{error}</Alert>}
+      {status === "disconnected" && (
+        <Alert color="yellow" mb="md">Connecting to server...</Alert>
+      )}
+      <Routes>
+        <Route path="/" element={<CreateJoin />} />
+        <Route path="/match/:id" element={<Match />} />
+      </Routes>
+    </>
   );
 }
 

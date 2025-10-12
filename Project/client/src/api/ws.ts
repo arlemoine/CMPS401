@@ -4,11 +4,20 @@
 
 export type ClientMsg =
   | { type: "join"; payload: { displayName: string } }
-  | { type: "create_match"; payload: {} };
+  | { type: "create_match"; payload: {} }
+  | { type: "join_match"; payload: { matchId: string } };
+
+export type Player = {
+  id: string;
+  displayName: string;
+  mark: string;
+};
 
 export type ServerMsg =
   | { type: "hello"; payload: { serverVersion: string } }
   | { type: "match_created"; payload: { matchId: string } }
+  | { type: "joined_match"; payload: { matchId: string; you: Player } }
+  | { type: "state_update"; payload: { matchId: string; players: Player[]; status: string } }
   | { type: "error"; payload: { code: string; message: string } };
 
 const WS_URL = import.meta.env.VITE_WS_URL as string;
