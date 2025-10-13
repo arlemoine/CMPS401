@@ -1,23 +1,26 @@
-// Project/client/src/api/ws.ts
-// StrictMode + HMR-safe WebSocket singleton with queue, minimal reconnect,
-// and a small pub/sub API to avoid repetitive single handlers.
-
+// WebSocket API for Tic-Tac-Toe
 export type ClientMsg =
   | { type: "join"; payload: { displayName: string } }
   | { type: "create_match"; payload: {} }
-  | { type: "join_match"; payload: { matchId: string } };
+  | { type: "join_match"; payload: { matchId: string } }
+  | { type: "make_move"; payload: { matchId: string; index: number } };
 
-export type Player = {
-  id: string;
-  displayName: string;
-  mark: string;
-};
+export type Player = { id: string; displayName: string; mark: string };
 
 export type ServerMsg =
   | { type: "hello"; payload: { serverVersion: string } }
   | { type: "match_created"; payload: { matchId: string; you: Player } }
   | { type: "joined_match"; payload: { matchId: string; you: Player } }
-  | { type: "state_update"; payload: { matchId: string; players: Player[]; status: string } }
+  | {
+      type: "state_update";
+      payload: {
+        matchId: string;
+        players: Player[];
+        status: string;
+        board: (string | null)[];
+        turn: string | null;
+      };
+    }
   | { type: "error"; payload: { code: string; message: string } };
 
 const WS_URL = import.meta.env.VITE_WS_URL as string;
@@ -33,7 +36,6 @@ export type WSHandle = {
   onClose: (handler: (code: number, reason: string) => void) => Unsubscribe;
 };
 
-// --- HMR/StrictMode-proof singleton on window ---
 declare global {
   interface Window {
     __TTT_WS__?: ReturnType<typeof createWS>;
@@ -43,121 +45,89 @@ declare global {
 function createWS(): WSHandle {
   let socket: WebSocket | null = null;
   let connecting = false;
-  let reconnectTimer: number | null = null;
-  let retryMs = 0;
   let outboundQueue: ClientMsg[] = [];
-
-  // Pub/Sub sets (multiple listeners; unsub returns a disposer)
+  
   const messageHandlers = new Set<(msg: ServerMsg) => void>();
   const openHandlers = new Set<() => void>();
   const closeHandlers = new Set<(code: number, reason: string) => void>();
 
   const isOpen = () => socket?.readyState === WebSocket.OPEN;
-  const isConnecting = () => socket?.readyState === WebSocket.CONNECTING || connecting;
 
   const flush = (s: WebSocket) => {
-    if (outboundQueue.length === 0) return;
     for (const m of outboundQueue) s.send(JSON.stringify(m));
     outboundQueue = [];
   };
 
-  const scheduleReconnect = () => {
-    // backoff: 250ms, 500ms, 1000ms (cap)
-    retryMs = Math.min(retryMs ? retryMs * 2 : 250, 1000);
-    if (reconnectTimer) return;
-    reconnectTimer = window.setTimeout(() => {
-      reconnectTimer = null;
-      api.connect();
-    }, retryMs);
-  };
+  const scheduleReconnect = () => setTimeout(() => api.connect(), 500);
 
-  const addHandler = <T>(set: Set<T>, h: T): Unsubscribe => {
+  const addHandler = <T, >(set: Set<T>, h: T): Unsubscribe => {
     set.add(h);
     return () => set.delete(h);
   };
 
   const api: WSHandle = {
-    get socket() {
-      return socket;
-    },
+    get socket() { return socket; },
 
     connect() {
-      if (!WS_URL || !/^wss?:\/\//.test(WS_URL)) {
-        console.error("[ws] VITE_WS_URL missing/invalid:", WS_URL);
-        return;
-      }
-      if (isOpen() || isConnecting()) return; // already open or in-flight
-
+      if (!WS_URL || isOpen() || connecting) return;
       connecting = true;
       const s = new WebSocket(WS_URL);
 
       s.onopen = () => {
         socket = s;
         connecting = false;
-        retryMs = 0; // reset backoff
-        // Notify and flush after we are officially open
-        openHandlers.forEach((h) => h());
         flush(s);
-        console.log("[ws] open:", WS_URL);
+        openHandlers.forEach(h => h());
+        console.log("[ws] connected");
       };
 
       s.onmessage = (ev) => {
         try {
-          const data = JSON.parse(ev.data) as ServerMsg;
-          messageHandlers.forEach((h) => h(data));
-          console.log("[ws] <=", data);
+          const msg = JSON.parse(ev.data) as ServerMsg;
+          messageHandlers.forEach(h => h(msg));
+          console.log("[ws] <= ", msg);
         } catch (e) {
-          console.warn("[ws] non-JSON:", ev.data, e);
+          console.warn("[ws] non-JSON", ev.data, e);
         }
       };
 
       s.onclose = (ev) => {
         if (socket === s) socket = null;
         connecting = false;
-        closeHandlers.forEach((h) => h(ev.code, ev.reason));
+        closeHandlers.forEach(h => h(ev.code, ev.reason));
         console.log("[ws] closed", ev.code, ev.reason);
-        // reconnect in dev for common transient codes
-        if (ev.code === 1006 || ev.code === 1001 || ev.code === 1000) {
-          scheduleReconnect();
-        }
+        scheduleReconnect();
       };
 
-      s.onerror = (ev) => {
-        // The socket will shortly close and trigger onclose; keep logs minimal
-        console.warn("[ws] error", ev);
-      };
+      s.onerror = (ev) => console.warn("[ws] error", ev);
     },
 
     send(msg: ClientMsg) {
-      const s = socket;
-      if (!s || !isOpen()) {
+      if (!isOpen()) {
         outboundQueue.push(msg);
-        if (!isConnecting()) this.connect();
+        api.connect();
         return;
       }
-      s.send(JSON.stringify(msg));
-      console.log("[ws] =>", msg);
+      socket?.send(JSON.stringify(msg));
+      console.log("[ws] => ", msg);
     },
 
     close() {
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
       socket?.close();
       socket = null;
       connecting = false;
+      outboundQueue = [];
     },
 
-    onMessage(handler: (msg: ServerMsg) => void): Unsubscribe {
+    onMessage(handler: (msg: ServerMsg) => void) {
       return addHandler(messageHandlers, handler);
     },
 
-    onOpen(handler: () => void): Unsubscribe {
+    onOpen(handler: () => void) {
       return addHandler(openHandlers, handler);
     },
 
-    onClose(handler: (code: number, reason: string) => void): Unsubscribe {
+    onClose(handler: (code: number, reason: string) => void) {
       return addHandler(closeHandlers, handler);
     },
   };
@@ -165,5 +135,4 @@ function createWS(): WSHandle {
   return api;
 }
 
-// Reuse existing instance across HMR/StrictMode, or create once
 export const ws: WSHandle = (window.__TTT_WS__ ??= createWS());
