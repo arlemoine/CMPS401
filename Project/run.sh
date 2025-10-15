@@ -38,7 +38,7 @@ $TERMINAL bash -c "cd server && cargo run; exec bash" &
 sleep 1
 
 # --- Step 4: Launch frontend ---
-$TERMINAL bash -c "cd client && npm install && npm run dev; exec bash" &
+$TERMINAL bash -c "cd client && npm install && && npm install vite && npm run dev; exec bash" &
 
 # --- Step 5: Open frontend in browser ---
 open_url() {
