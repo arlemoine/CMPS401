@@ -2,7 +2,7 @@
 
 ## Contents
 
-- [1 Description](#11-description)
+- [1 Description](#1-description)
   - [1.1 General Structure](#11-general-structure)
   - [1.2 Repository Structure](#12-repository-structure)
   - [1.3 Notes for Collaborators](#13-notes-for-collaborators)
@@ -46,7 +46,7 @@ Project/
   client/   → React + TypeScript + Mantine (frontend)
   server/   → Rust (backend)
   docs/     → protocols, architecture, notes
-  scripts/  → helper scripts (optional later)
+  scripts/  → helper/run scripts 
   .github/  → CI/CD workflows (later)
 ```
 
@@ -54,18 +54,18 @@ Project/
 
 - See [architecture.md](docs/architecture.md) for design details.
 - Make sure you can run both **server** and **client** locally.  
-- Begin implementing something from the suggested work list.
 - Regularly commit and push your changes to the repo.
 - Update `docs/` with new useful information for the team or for presenting.
 - The `.gitignore` excludes `node_modules/`, `target/`, logs, and OS/editor files.  
 - Work happens mainly in `client/` and `server/`.  
-- Keep `docs/` updated with any design decisions or message protocol updates. 
+- Keep `docs/` updated with any design decisions or message protocol updates.
 
 ## 2 Setup
 
-This setup guide assumes the use of the **Ubuntu** operating system and should be adjusted as needed depending on other system configurations. 
+This setup guide assumes the use of the **Ubuntu** operating system and should be adjusted as needed depending on other system configurations.
 
 Prerequisites include the following:
+
 - git
 - curl
 - tmux
@@ -119,7 +119,7 @@ git clone https://github.com/arlemoine/CMPS401.git
 
 ### 2.6 Automated environment setup and startup
 
-Navigate to `/Project/` and run the following:
+Navigate to `/Project/scripts` and run the following:
 
 ```bash
 ./run.sh
@@ -139,14 +139,14 @@ npm install vite
 
 1. In one terminal environment, navigate to `/Project/server/` and run the backend server:
 
-```bash
-cargo run
-```
+   ```bash
+   cargo run
+   ```
 
 2. In another terminal environment, navigate to `/Project/client/` and run the frontend server:
 
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   ```
 
-3. Navigate to http://localhost:5173 in your web browser to use the program.
+3. Navigate to <http://localhost:5173> in your web browser to use the program.

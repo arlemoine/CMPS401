@@ -3,9 +3,9 @@
 set -e
 
 SESSION_NAME="dev_env"
-LOG_DIR="./logs"
-BACKEND_DIR="./server"
-FRONTEND_DIR="./client"
+LOG_DIR="../logs"
+BACKEND_DIR="../server"
+FRONTEND_DIR="../client"
 ENV_FILE="$FRONTEND_DIR/.env"
 ENV_CONTENT="VITE_WS_URL=ws://127.0.0.1:3001/ws"
 
