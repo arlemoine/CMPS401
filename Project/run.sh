@@ -1,70 +1,57 @@
 #!/usr/bin/env bash
-# run.sh - Start backend, frontend, and open browser (cross-DE Linux safe)
+# run.sh - Start backend + frontend in one script, works headless or GUI
+set -e
 
-# --- Step 1: Ensure .env exists with correct content ---
-ENV_FILE="client/.env"
+SESSION_NAME="dev_env"
+LOG_DIR="./logs"
+BACKEND_DIR="./server"
+FRONTEND_DIR="./client"
+ENV_FILE="$FRONTEND_DIR/.env"
 ENV_CONTENT="VITE_WS_URL=ws://127.0.0.1:3001/ws"
 
+# --- Step 0: Check tmux ---
+if ! command -v tmux &>/dev/null; then
+    echo "Error: tmux is not installed. Install with:"
+    echo "  sudo apt update && sudo apt install -y tmux"
+    exit 1
+fi
+
+# --- Step 1: Ensure .env exists ---
+mkdir -p "$FRONTEND_DIR"
 if [ -f "$ENV_FILE" ]; then
     if ! grep -Fxq "$ENV_CONTENT" "$ENV_FILE"; then
         echo "$ENV_CONTENT" > "$ENV_FILE"
         echo ".env updated with VITE_WS_URL"
-    else
-        echo ".env already correct"
     fi
 else
     echo "$ENV_CONTENT" > "$ENV_FILE"
     echo ".env created with VITE_WS_URL"
 fi
 
-# --- Step 2: Detect terminal emulator ---
-if command -v gnome-terminal &>/dev/null; then
-    TERMINAL="gnome-terminal --"
-elif command -v konsole &>/dev/null; then
-    TERMINAL="konsole --hold -e"
-elif command -v xfce4-terminal &>/dev/null; then
-    TERMINAL="xfce4-terminal --hold -e"
-elif command -v xterm &>/dev/null; then
-    TERMINAL="xterm -hold -e"
-else
-    echo "No known terminal emulator found. Install gnome-terminal, konsole, xfce4-terminal, or xterm."
-    exit 1
+# --- Step 2: Create logs directory ---
+mkdir -p "$LOG_DIR"
+
+# --- Step 3: Clean previous tmux session if exists ---
+if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+    tmux kill-session -t $SESSION_NAME
 fi
 
-# --- Step 3: Launch backend ---
-$TERMINAL bash -c "cd server && cargo run; exec bash" &
+# --- Step 4: Start backend in tmux ---
+tmux new-session -d -s $SESSION_NAME -n backend \
+    "cd $BACKEND_DIR && cargo run 2>&1 | tee $LOG_DIR/backend.log"
 
-# Small delay to avoid KDE terminal warnings
-sleep 1
+# --- Step 5: Start frontend in tmux ---
+tmux new-window -t $SESSION_NAME -n frontend \
+    "cd $FRONTEND_DIR && npm install && npm install vite && npm run dev 2>&1 | tee $LOG_DIR/frontend.log"
 
-# --- Step 4: Launch frontend ---
-$TERMINAL bash -c "cd client && npm install && npm install vite && npm run dev; exec bash" &
+echo "✅ Dev environment started!"
+echo "📜 Logs: $LOG_DIR/backend.log and $LOG_DIR/frontend.log"
+echo ""
+echo "👉 Attach to session: tmux attach -t $SESSION_NAME"
+echo "👉 Detach: Ctrl+B then D"
+echo "👉 Stop everything: Ctrl+C here"
+echo ""
 
-# --- Step 5: Open frontend in browser ---
-open_url() {
-    URL="http://localhost:5173"
-
-    # 1. xdg-open (cross-DE)
-    if command -v xdg-open &>/dev/null; then
-        xdg-open "$URL" 2>/dev/null && return
-    fi
-
-    # 2. $BROWSER env variable
-    if [ -n "$BROWSER" ] && command -v "$BROWSER" &>/dev/null; then
-        "$BROWSER" "$URL" & return
-    fi
-
-    # 3. Common browsers
-    for browser in firefox google-chrome brave chromium chromium-browser; do
-        if command -v $browser &>/dev/null; then
-            $browser "$URL" & return
-        fi
-    done
-
-    # 4. Fallback
-    echo "Could not automatically open browser. Open manually: $URL"
-}
-
-open_url
-
-echo "Server and client starting..."
+# --- Step 6: Keep script alive so Ctrl+C works ---
+trap "echo 'Stopping dev environment...'; tmux kill-session -t $SESSION_NAME 2>/dev/null; exit 0" SIGINT
+while true; do sleep 2; done
