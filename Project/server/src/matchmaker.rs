@@ -1,8 +1,9 @@
 use crate::types::{MatchState, Player, ServerMsg};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{broadcast, RwLock};
+use rand::thread_rng;
 
-/// A live room: authoritative state + broadcast bus for all sockets in the room.
+
 pub struct MatchRoom {
     pub state: MatchState,
     pub bcast: broadcast::Sender<ServerMsg>,
@@ -10,10 +11,13 @@ pub struct MatchRoom {
 
 pub type MatchRegistry = Arc<RwLock<HashMap<String, MatchRoom>>>;
 
+/// Generate a random 4-character match ID
 pub fn new_match_id() -> String {
-    use rand::Rng;
-    let mut rng = rand::rng();
-    (0..4).map(|_| rng.random_range(b'A'..=b'Z') as char).collect()
+    use rand::prelude::*;
+    let mut rng = thread_rng(); // replaced deprecated thread_rng()
+    (0..4)
+        .map(|_| rng.gen_range(b'A'..=b'Z') as char) // `gen_range` is now fine
+        .collect()
 }
 
 /// Create a room with a fresh broadcast channel and return a receiver for the creator.
@@ -47,8 +51,9 @@ pub async fn broadcast_state(registry: &MatchRegistry, match_id: &str) -> Option
         match_id: room.state.match_id.clone(),
         players: room.state.players.clone(),
         status: room.state.status.clone(),
+        board: room.state.board.clone(),
+        turn: room.state.turn.clone(),
     };
-    // Ignore send errors (e.g., no subscribers) — this is fine.
     let _ = room.bcast.send(update);
     Some(())
 }
@@ -62,8 +67,12 @@ pub fn push_player(room: &mut MatchRoom, id: String, display_name: String, mark:
         mark: mark.to_string(),
     };
     room.state.players.push(p.clone());
-    if room.state.players.len() == 2 {
+
+    // Set status and turn if 2 players are present
+    if room.state.players.len() == 2 && room.state.status != "IN_PROGRESS" {
         room.state.status = "IN_PROGRESS".to_string();
+        room.state.turn = Some("X".to_string()); // X always starts
     }
+
     p
 }
