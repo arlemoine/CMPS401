@@ -1,47 +1,58 @@
+// NOTE: This is currently only a skeleton which opens a websocket connection to the frontend and echoes messages received from the frontend back to the frontend.
+
 use axum::{
-    routing::{get, post},
-    extract::{WebSocketUpgrade, State},
+    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    response::IntoResponse, 
+    routing::get, 
     Router,
 };
-use std::collections::HashMap; // 👈 FIX E0433: Import HashMap
-use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::sync::Mutex; // 👈 We use Mutex, not RwLock in this example
-use uuid::Uuid;
+use std::net::SocketAddr;
+use tracing_subscriber;
+use tokio::net::TcpListener;
 
-// Global Application State (MatchRegistry)
-// Holds all active matches, protected by a Mutex for safe concurrent access.
-type MatchRegistry = Arc<Mutex<HashMap<String, Match>>>; // 👈 Define MatchRegistry here
+/// Receives initial GET from client (directed to ws), drops the http protocol, and establishes websocket connection
+async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    ws.on_upgrade(handle_socket)
+}
 
-mod match_; // 👈 Fix E0583: Assumes you renamed file to src/match_.rs
-mod types;
-mod game_models;
-mod ws;
-
-use crate::match_::Match; // 👈 Use the local Match struct
+/// Defines websocket communication after ws_handler() is called
+async fn handle_socket(mut socket: WebSocket) {
+    while let Some(Ok(msg)) = socket.recv().await {
+        match msg {
+            Message::Text(t) => {
+                // echo
+                if socket.send(Message::Text(t)).await.is_err() {
+                    break;
+                }
+            }
+            Message::Binary(b) => {
+                if socket.send(Message::Binary(b)).await.is_err() {
+                    break;
+                }
+            }
+            Message::Close(_) => break,
+            _ => {}
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {
-    // 1. Initialize the global match registry
-    let registry: MatchRegistry = Arc::new(Mutex::new(HashMap::new()));
+    // Init logger
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
-    // 2. Configure the HTTP routes
-    let app = Router::new()
-        .route("/match/new/{game_type}/{player_id}", post(match_::create_match_handler))
-        // Add this new route so the frontend can connect without parameters:
-        .route("/ws", get(|ws: WebSocketUpgrade, State(registry): State<MatchRegistry>| async move {
-            let match_id = "default_match".to_string();
-            let player_id = "guest_player".to_string();
-            ws.on_upgrade(|socket| crate::ws::handle_socket(socket, registry, match_id, player_id))
-        }))
-        .with_state(registry);
+    // Define router paths and socket address
+    let app = Router::new().route("/ws", get(ws_handler));
+    let addr = SocketAddr::from(([127,0,0,1], 3000));
 
-    // 3. Start the server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001")
+    // Utilize logger
+    tracing::info!("listening on {}", addr);
+
+    // Define server connection
+    let listener = TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
-
-    println!("Listening on http://0.0.0.0:3001");
-
-    axum::serve(listener, app).await.unwrap();
 }
