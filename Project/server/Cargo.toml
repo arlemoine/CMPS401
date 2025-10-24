@@ -12,4 +12,7 @@ tokio = { version = "1.47.1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"] }
 futures-util = "0.3"
+uuid = { version = "1.18.1", features = ["v4"] }
+features = "0.10.0"
+futures = "0.3.31"
 

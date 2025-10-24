@@ -1,347 +1,148 @@
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Path, State,
+    },
     response::IntoResponse,
 };
-use tokio::task::JoinHandle;
-use tracing::{info, warn};
 use futures_util::{SinkExt, StreamExt};
-use futures_util::stream::SplitSink;
-use tokio::sync::mpsc;
+use serde_json;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
+use std::collections::HashMap;
 
-use crate::matchmaker::{broadcast_state, create_room, new_match_id, push_player, MatchRegistry};
-use crate::types::{ClientMsg, MatchState, Player, ServerMsg};
+use crate::{
+    types::{ClientMsg, ServerMsg, Player},
+    match_::Match,
+};
 
-pub async fn ws_upgrade(ws: WebSocketUpgrade, registry: MatchRegistry) -> impl IntoResponse {
-    info!("/ws upgrade requested");
-    ws.on_upgrade(|socket| handle_socket(socket, registry))
+// Define MatchRegistry type (same as in main.rs)
+type MatchRegistry = Arc<Mutex<HashMap<String, Match>>>;
+
+/// Handler for the HTTP upgrade to a WebSocket connection.
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Path((match_id, player_id)): Path<(String, String)>,
+    State(registry): State<MatchRegistry>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_socket(socket, registry, match_id, player_id))
 }
 
-async fn handle_socket(socket: WebSocket, registry: MatchRegistry) {
-    info!("websocket connected");
+/// Core logic for handling the WebSocket connection.
+pub async fn handle_socket(
+    socket: WebSocket,
+    registry: MatchRegistry,
+    match_id: String,
+    player_id: String,
+) {
+    // 1. Split the socket into sender and receiver
+    let (mut client_ws_tx, mut client_ws_rx) = socket.split(); 
 
-    let mut player_id: Option<String> = None;
-    let mut display_name: Option<String> = None;
+    // 2. Channel to receive messages broadcasted by the Match's GameLogic.
+    let (tx_to_client, mut rx_from_match) = mpsc::unbounded_channel::<String>();
 
-    let (ws_tx, mut ws_rx) = socket.split();
-    let mut ws_tx_opt = Some(ws_tx);
-    let (to_ws_tx, to_ws_rx) = mpsc::unbounded_channel::<Message>();
-    let mut to_ws_rx_opt = Some(to_ws_rx);
+    // 3. Lock the match registry to find and join the match
+    let mut registry_lock = registry.lock().await;
+    let match_data = registry_lock.get_mut(&match_id);
 
-    let mut bcast_forwarder: Option<JoinHandle<()>> = None;
-
-    while let Some(Ok(msg)) = ws_rx.next().await {
-        if let Message::Text(txt_bytes) = msg {
-            let txt = txt_bytes.to_string();
-            info!(%txt, "received text");
-
-            match serde_json::from_str::<ClientMsg>(&txt) {
-                Ok(ClientMsg::Join { display_name: name }) => {
-                    if player_id.is_none() {
-                        let id = new_match_id();
-                        player_id = Some(id.clone());
-                        display_name = Some(name.clone());
-                        info!(%name, %id, "join message parsed - player ID assigned");
-                    } else {
-                        display_name = Some(name.clone());
-                    }
-
-                    let out = ServerMsg::Hello { server_version: "0.1" };
-                    let s = serde_json::to_string(&out).unwrap();
-                    let _ = to_ws_tx.send(Message::Text(s.into()));
-                }
-
-                Ok(ClientMsg::CreateMatch {}) => {
-                    let match_id = new_match_id();
-                    info!(%match_id, "create_match parsed; issuing match_id");
-
-                    if let (Some(pid), Some(name)) = (&player_id, &display_name) {
-                        let creator = Player {
-                            id: pid.clone(),
-                            display_name: name.clone(),
-                            mark: "X".to_string(),
-                        };
-                        let state = MatchState {
-                            match_id: match_id.clone(),
-                            players: vec![creator.clone()],
-                            status: "WAITING".to_string(),
-                            board: vec![None; 9],
-                            turn: None,
-                        };
-
-                        let (_id, rx) = create_room(&registry, state).await;
-
-                        let out = ServerMsg::MatchCreated {
-                            match_id: match_id.clone(),
-                            you: creator,
-                        };
-                        let s = serde_json::to_string(&out).unwrap();
-                        let _ = to_ws_tx.send(Message::Text(s.into()));
-
-                        let _ = broadcast_state(&registry, &match_id).await;
-
-                        if bcast_forwarder.is_none() {
-                            if let (Some(ws_tx), Some(to_ws_rx)) = (ws_tx_opt.take(), to_ws_rx_opt.take())
-                            {
-                                bcast_forwarder = Some(spawn_broadcast_forwarder(rx, ws_tx, to_ws_rx));
-                            }
-                        }
-                    } else {
-                        let out = ServerMsg::Error {
-                            code: "NO_PLAYER_ID".into(),
-                            message: "Send join message first".into(),
-                        };
-                        let s = serde_json::to_string(&out).unwrap();
-                        let _ = to_ws_tx.send(Message::Text(s.into()));
-                    }
-                }
-            
-            // In ws.rs, update the JoinMatch handler:
-            
-            Ok(ClientMsg::JoinMatch { match_id }) => {
-                info!(%match_id, "join_match parsed");
-            
-                if player_id.is_none() || display_name.is_none() {
-                    let out = ServerMsg::Error {
-                        code: "NO_PLAYER_ID".into(),
-                        message: "Send join message first".into(),
-                    };
-                    let s = serde_json::to_string(&out).unwrap();
-                    let _ = to_ws_tx.send(Message::Text(s.into()));
-                    continue;
-                }
-            
-                let name = display_name.as_ref().unwrap().clone();
-                let pid = player_id.as_ref().unwrap().clone();
-            
-                let mut reg = registry.write().await;
-                if let Some(room) = reg.get_mut(&match_id) {
-                    if room.state.players.len() >= 2 {
-                        let out = ServerMsg::Error {
-                            code: "MATCH_FULL".into(),
-                            message: "Match already has 2 players".into(),
-                        };
-                        let s = serde_json::to_string(&out).unwrap();
-                        let _ = to_ws_tx.send(Message::Text(s.into()));
-                        continue;
-                    }
-            
-                    // Add the second player
-                    let you = push_player(room, pid.clone(), name.clone(), "O");
-            
-                    // Set match IN_PROGRESS if now 2 players
-                    if room.state.players.len() == 2 {
-                        room.state.status = "IN_PROGRESS".to_string();
-                        room.state.turn = Some("X".to_string()); // X starts
-                    }
-            
-                    // Send confirmation to joining player
-                    let out = ServerMsg::JoinedMatch {
-                        match_id: match_id.clone(),
-                        you: you.clone(),
-                    };
-                    let s = serde_json::to_string(&out).unwrap();
-                    let _ = to_ws_tx.send(Message::Text(s.into()));
-            
-                    // IMPORTANT: Subscribe the joining player to broadcast channel
-                    let rx = room.bcast.subscribe();
-                    
-                    drop(reg); // Release the lock
-            
-                    // Set up broadcast forwarder for the joining player
-                    if bcast_forwarder.is_none() {
-                        if let (Some(ws_tx), Some(to_ws_rx)) = (ws_tx_opt.take(), to_ws_rx_opt.take()) {
-                            bcast_forwarder = Some(spawn_broadcast_forwarder(rx, ws_tx, to_ws_rx));
-                        }
-                    }
-            
-                    // Broadcast updated state to all players (including the new one)
-                    let _ = broadcast_state(&registry, &match_id).await;
-            
-                    info!(%match_id, player_id=%pid, "player joined; state broadcasted");
-                } else {
-                    drop(reg);
-                    let out = ServerMsg::Error {
-                        code: "MATCH_NOT_FOUND".into(),
-                        message: format!("Match {} not found", match_id),
-                    };
-                    let s = serde_json::to_string(&out).unwrap();
-                    let _ = to_ws_tx.send(Message::Text(s.into()));
-                }
+    let match_instance = match match_data {
+        Some(m) => m,
+        None => {
+            // Match not found, send an error and exit
+            let error_msg = ServerMsg::Error {
+                code: "MATCH_NOT_FOUND".to_string(),
+                message: format!("Match {} does not exist.", match_id),
+            };
+            if let Ok(json_string) = serde_json::to_string(&error_msg) {
+                let _ = client_ws_tx.send(Message::Text(json_string.into())).await;
             }
+            return;
+        }
+    };
+    
+    // 4. Register the player with the Match instance (using player_id as display_name for now)
+    let player_data = match_instance.add_player(player_id.clone(), player_id.clone()); 
+    
+    // 5. Send initial "JoinedMatch" message
+    let initial_msg = ServerMsg::JoinedMatch {
+        you: player_data.clone(), 
+        match_id: match_id.clone(),
+        body: match_instance.game.get_state(&match_id).get_body().clone(),
+    };
+    
+    // Register the client's dedicated channel for receiving broadcasts from the Match.
+    // This allows the GameLogic trait to broadcast to all clients connected to this match.
+    let mut player_listeners = match_instance.game.get_listeners();
+    player_listeners.insert(player_id.clone(), tx_to_client);
 
-                
-                // In ws.rs, update the MakeMove handler section:
-                
-                Ok(ClientMsg::MakeMove { match_id, index }) => {
-                    info!(%match_id, index = index, "make_move parsed");
-                
-                    if index >= 9 {
-                        let out = ServerMsg::Error {
-                            code: "BAD_INDEX".into(),
-                            message: "Index must be 0..8".into(),
-                        };
-                        let s = serde_json::to_string(&out).unwrap();
-                        let _ = to_ws_tx.send(Message::Text(s.into()));
-                        continue;
-                    }
-                
-                    let mut reg = registry.write().await;
-                    if let Some(room) = reg.get_mut(&match_id) {
-                        let pid = match &player_id {
-                            Some(p) => p.clone(),
-                            None => {
-                                let out = ServerMsg::Error {
-                                    code: "NO_PLAYER".into(),
-                                    message: "Player not identified".into(),
-                                };
-                                let s = serde_json::to_string(&out).unwrap();
-                                let _ = to_ws_tx.send(Message::Text(s.into()));
-                                continue;
-                            }
-                        };
-                        
-                        // Find the player making the move
-                        let player_mark = match room.state.players.iter().find(|p| p.id == pid) {
-                            Some(player) => player.mark.clone(),
-                            None => {
-                                let out = ServerMsg::Error {
-                                    code: "NOT_IN_MATCH".into(),
-                                    message: "You are not in this match".into(),
-                                };
-                                let s = serde_json::to_string(&out).unwrap();
-                                let _ = to_ws_tx.send(Message::Text(s.into()));
-                                continue;
-                            }
-                        };
-                
-                        // Validate game state and turn
-                        if room.state.status != "IN_PROGRESS" { 
-                            let out = ServerMsg::Error {
-                                code: "GAME_NOT_STARTED".into(),
-                                message: "Game is not in progress".into(),
-                            };
-                            let s = serde_json::to_string(&out).unwrap();
-                            let _ = to_ws_tx.send(Message::Text(s.into()));
-                            continue;
-                        }
-                        
-                        if room.state.turn.as_deref() != Some(player_mark.as_str()) { 
-                            let out = ServerMsg::Error {
-                                code: "NOT_YOUR_TURN".into(),
-                                message: "It's not your turn".into(),
-                            };
-                            let s = serde_json::to_string(&out).unwrap();
-                            let _ = to_ws_tx.send(Message::Text(s.into()));
-                            continue;
-                        }
-                        
-                        if room.state.board[index].is_some() { 
-                            let out = ServerMsg::Error {
-                                code: "CELL_OCCUPIED".into(),
-                                message: "This cell is already occupied".into(),
-                            };
-                            let s = serde_json::to_string(&out).unwrap();
-                            let _ = to_ws_tx.send(Message::Text(s.into()));
-                            continue;
-                        }
-                
-                        // Make the move
-                        room.state.board[index] = Some(player_mark.clone());
-                
-                        // Check for winner or draw
-                        if let Some(winner_mark) = check_winner(&room.state.board) {
-                            room.state.status = "FINISHED".to_string();
-                            room.state.turn = None;
-                            info!(%match_id, winner=%winner_mark, "Game finished with winner");
-                        } else if room.state.board.iter().all(|c| c.is_some()) {
-                            room.state.status = "FINISHED".to_string(); // draw
-                            room.state.turn = None;
-                            info!(%match_id, "Game finished as draw");
-                        } else {
-                            // Switch turn
-                            room.state.turn = Some(if player_mark == "X" { 
-                                "O".to_string() 
-                            } else { 
-                                "X".to_string() 
-                            });
-                            info!(%match_id, next_turn=?room.state.turn, "Turn switched");
-                        }
-                
-                        drop(reg); // Release the lock before broadcasting
-                        
-                        // Broadcast updated state to all players
-                        let _ = broadcast_state(&registry, &match_id).await;
-                        info!(%match_id, "State broadcasted after move");
-                    } else {
-                        let out = ServerMsg::Error {
-                            code: "MATCH_NOT_FOUND".into(),
-                            message: format!("Match {} not found", match_id),
-                        };
-                        let s = serde_json::to_string(&out).unwrap();
-                        let _ = to_ws_tx.send(Message::Text(s.into()));
-                    }
-                }
+    // Release the registry lock before spawning long-lived tasks
+    drop(registry_lock);
 
-                Err(e) => {
-                    warn!(error = %e, "bad json");
-                    let out = ServerMsg::Error {
-                        code: "BAD_JSON".into(),
-                        message: e.to_string(),
-                    };
-                    let s = serde_json::to_string(&out).unwrap();
-                    let _ = to_ws_tx.send(Message::Text(s.into()));
-                }
-            }
+    if let Ok(json_string) = serde_json::to_string(&initial_msg) {
+        if client_ws_tx.send(Message::Text(json_string.into())).await.is_err() { 
+            println!("Error sending initial message to {}.", player_id);
+            return; 
         }
     }
 
-    if let Some(task) = bcast_forwarder {
-        task.abort();
-    }
-    info!("websocket closed");
-}
+    // --- Message Forwarding Task (SENDER) ---
+    // Reads messages from the match's channel (rx_from_match) and sends them to the client's WebSocket (client_ws_tx).
+    let mut sender_task = tokio::spawn(async move {
+        while let Some(json_string) = rx_from_match.recv().await {
+            if client_ws_tx.send(Message::Text(json_string.into())).await.is_err() { 
+                // Client disconnected
+                break;
+            }
+        }
+    });
 
-/// Forwards room broadcasts and app-initiated messages → this socket.
-fn spawn_broadcast_forwarder(
-    mut rx: tokio::sync::broadcast::Receiver<ServerMsg>,
-    mut ws_tx: SplitSink<WebSocket, Message>,
-    mut to_ws_rx: mpsc::UnboundedReceiver<Message>,
-) -> JoinHandle<()> {
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                Some(msg) = to_ws_rx.recv() => {
-                    if ws_tx.send(msg).await.is_err() { break; }
-                }
-                res = rx.recv() => {
-                    match res {
-                        Ok(server_msg) => {
-                            if let Ok(text) = serde_json::to_string(&server_msg) {
-                                if ws_tx.send(Message::Text(text.into())).await.is_err() { break; }
-                            }
+    // --- Message Listening Task (RECEIVER) ---
+    // Listens for messages from the client (client_ws_rx) and routes them to the Match.
+    let match_id_clone = match_id.clone();
+    let registry_clone = registry.clone();
+    let player_id_clone = player_id.clone();
+
+    let mut receiver_task = tokio::spawn(async move {
+        while let Some(Ok(msg)) = client_ws_rx.next().await {
+            if let Message::Text(text) = msg {
+                match serde_json::from_str::<ClientMsg>(&text) {
+                    Ok(client_msg) => {
+                        let mut registry_lock = registry_clone.lock().await;
+                        if let Some(m) = registry_lock.get_mut(&match_id_clone) {
+                            // Call the async handler method on the Match struct
+                            m.handle_client_message(&player_id_clone, client_msg).await;
                         }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-                        Err(_) => break,
+                    }
+                    Err(e) => {
+                        println!("Failed to parse client message from {}: {} - Error: {}", player_id_clone, text, e);
                     }
                 }
             }
         }
-    })
-}
+    });
 
-/// Simple tic-tac-toe winner detection
-pub fn check_winner(board: &Vec<Option<String>>) -> Option<String> {
-    let wins = [
-        (0,1,2),(3,4,5),(6,7,8),
-        (0,3,6),(1,4,7),(2,5,8),
-        (0,4,8),(2,4,6),
-    ];
-    for (a,b,c) in wins.iter() {
-        if let (Some(x), Some(y), Some(z)) = (&board[*a], &board[*b], &board[*c]) {
-            if x == y && y == z {
-                return Some(x.clone());
-            }
+    // Wait for either the sender or receiver task to complete (meaning disconnection)
+    tokio::select! {
+        _ = &mut sender_task => {
+            receiver_task.abort();
+        },
+        _ = &mut receiver_task => {
+            sender_task.abort();
+        },
+    }
+
+    // --- Connection Cleanup ---
+    let mut registry_lock = registry.lock().await;
+    if let Some(m) = registry_lock.get_mut(&match_id) {
+        m.remove_player(&player_id);
+
+        // Remove the client's listener channel
+        m.game.get_listeners().remove(&player_id);
+
+        // If the match is completely empty, remove it from the registry
+        if m.players.len() == 0 && m.game.get_listeners().is_empty() {
+            registry_lock.remove(&match_id);
+            println!("Match {} closed and removed from registry.", match_id);
         }
     }
-    None
 }
