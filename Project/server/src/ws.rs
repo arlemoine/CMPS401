@@ -1,29 +1,58 @@
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Path, State,
+    },
     response::IntoResponse,
 };
+use futures::{sink::SinkExt, stream::StreamExt}; // for reading/writing WebSocket messages
+use std::sync::Arc;
 
-/// Receives initial GET from client (directed to ws), drops the http protocol, and establishes websocket connection
-pub async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
-    ws.on_upgrade(handle_socket)
+use crate::appstate::AppState;
+use crate::gameroom::GameRoom;
+use crate::routes::echo::echo_handler;
+use crate::types::{ClientMessage, ServerMessage};
+
+#[axum::debug_handler]
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
-/// Defines websocket communication after ws_handler() is called
-pub async fn handle_socket(mut socket: WebSocket) {
-    while let Some(Ok(msg)) = socket.recv().await {
+pub async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
+    while let Some(Ok(msg)) = socket.next().await {
         match msg {
-            Message::Text(t) => {
-                // echo
-                if socket.send(Message::Text(t)).await.is_err() {
-                    break;
+            Message::Text(text) => {
+                // Deserialize into ClientMessage
+                match serde_json::from_str::<ClientMessage>(&text) {
+                    Ok(client_msg) => {
+                        match client_msg {
+                            ClientMessage::Echo { message } => {
+                                // call your echo handler
+                                echo_handler(message, &state, &mut socket).await;
+                            }
+                            // ClientMessage::JoinRoom { room_id } => {
+                            //     join_room_handler(room_id, &state, &mut socket).await;
+                            // }
+                            // ClientMessage::MovePiece { from, to } => {
+                            //     game_handler(from, to, &state, &mut socket).await;
+                            // }
+                            // ClientMessage::Chat { text } => {
+                            //     chat_handler(text, &state, &mut socket).await;
+                            // }
+                        }
+                    }
+                    Err(_) => {
+                        let _ = socket.send(Message::Text(
+                            "Invalid JSON format for ClientMessage".into(),
+                        ))
+                        .await;
+                    }
                 }
             }
-            Message::Binary(b) => {
-                if socket.send(Message::Binary(b)).await.is_err() {
-                    break;
-                }
-            }
-            Message::Close(_) => break,
+            Message::Close(_) => break, // client disconnected
             _ => {}
         }
     }
