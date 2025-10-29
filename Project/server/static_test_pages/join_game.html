@@ -76,7 +76,7 @@
 
     <script>
         const joinBtn = document.getElementById('joinBtn');
-        joinBtn.addEventListener('click', () => {
+        joinBtn.addEventListener('click', async () => {
             const gameId = document.getElementById('gameId').value;
             const playerName = document.getElementById('playerName').value;
 
@@ -85,12 +85,43 @@
                 return;
             }
 
-            // Placeholder action
-            console.log(`Joining game ${gameId} as ${playerName}`);
-            alert(`Joining game ${gameId} as ${playerName}`);
-            
-            // Here you would send WebSocket message to join room
-            // Example: ws.send(JSON.stringify({ type: "JoinRoom", data: { room_id: gameId, name: playerName } }));
+            try {
+                // Send POST request to Rust backend on port 3000
+                const res = await fetch(`http://127.0.0.1:3000/tictactoe/join`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ game_id: gameId, player_name: playerName })
+                });
+
+                if (!res.ok) {
+                    alert(`Failed to join game: ${res.statusText}`);
+                    return;
+                }
+
+                const data = await res.json();
+                console.log("Joined game response:", data);
+
+                // Open WebSocket to Rust backend
+                const ws = new WebSocket(`ws://127.0.0.1:3000/ws`);
+
+                ws.addEventListener('open', () => {
+                    console.log("WebSocket connected");
+
+                    // Send JoinRoom message
+                    ws.send(JSON.stringify({
+                        type: "JoinRoom",
+                        data: { room_id: gameId, name: playerName }
+                    }));
+                });
+
+                ws.addEventListener('message', (event) => {
+                    console.log("Received:", event.data);
+                    // For now just log incoming messages
+                });
+
+            } catch (err) {
+                console.error("Error joining game:", err);
+            }
         });
     </script>
 </body>

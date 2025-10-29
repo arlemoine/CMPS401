@@ -1,30 +1,23 @@
 // NOTE: This is currently only a skeleton which opens a websocket connection to the frontend and echoes messages received from the frontend back to the frontend.
 use axum::{
-    Extension,
-    routing::get, 
+    routing::{get}, 
     Router,
 };
 use std::{
-    collections::HashMap,
     net::SocketAddr,
     sync::Arc,
 };
-use tokio::{
-    net::TcpListener,
-    sync::RwLock,
-};
+use tokio;
 use tracing_subscriber;
 
 // Declare project modules
-mod appstate;
+mod types;
 mod config;
 mod routes;
-mod types;
 mod ws;
 
+use types::appstate::AppState;
 use config::Config;
-use appstate::AppState;
-use routes::gameroom;
 use ws::ws_handler;
 
 
@@ -53,4 +46,24 @@ async fn main() {
     // Init listener
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn config_default_works() {
+        let config = Config::default();
+        // Just check that socket address parses
+        let addr: SocketAddr = config.socket_addr();
+        assert!(addr.ip().is_loopback());
+    }
+
+    #[tokio::test]
+    async fn state_initialization() {
+        let state = Arc::new(AppState::default());
+        // Ensure rooms hashmap exists and is empty initially
+        assert_eq!(state.rooms.read().await.len(), 0);
+    }
 }

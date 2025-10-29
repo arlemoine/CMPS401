@@ -15,6 +15,6 @@ futures-util = "0.3"
 uuid = { version = "1.18.1", features = ["v4"] }
 features = "0.10.0"
 futures = "0.3.31"
-tower-http = {version="0.6.6", features=["cors"]}
+tower-http = { version = "0.6.6", features = ["cors", "fs"] }
 hyper = "1.7.0"
 
