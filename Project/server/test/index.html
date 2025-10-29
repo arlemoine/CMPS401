@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Lobby</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 400px;
+        }
+
+        .game-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .game-name {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .game-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Game Lobby</h1>
+
+    <div class="game-container">
+        <div class="game-card">
+            <div class="game-name">Tic Tac Toe</div>
+            <div class="game-buttons">
+                <button>Create Match</button>
+                <button>Join Match</button>
+            </div>
+        </div>
+
+        <div class="game-card">
+            <div class="game-name">Bingo</div>
+            <div class="game-buttons">
+                <button>Create Match</button>
+                <button>Join Match</button>
+            </div>
+        </div>
+
+        <div class="game-card">
+            <div class="game-name">Chess</div>
+            <div class="game-buttons">
+                <button>Create Match</button>
+                <button>Join Match</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

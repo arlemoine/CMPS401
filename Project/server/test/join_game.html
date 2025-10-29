@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Join Match</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .join-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 400px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input {
+            padding: 8px;
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Join a Match</h1>
+
+    <div class="join-container">
+        <div>
+            <label for="gameId">Game ID</label>
+            <input type="text" id="gameId" placeholder="Enter game ID">
+        </div>
+
+        <div>
+            <label for="playerName">Player Name</label>
+            <input type="text" id="playerName" placeholder="Enter your name">
+        </div>
+
+        <button id="joinBtn">Join Match</button>
+    </div>
+
+    <script>
+        const joinBtn = document.getElementById('joinBtn');
+        joinBtn.addEventListener('click', () => {
+            const gameId = document.getElementById('gameId').value;
+            const playerName = document.getElementById('playerName').value;
+
+            if (!gameId || !playerName) {
+                alert("Please enter both Game ID and your name.");
+                return;
+            }
+
+            // Placeholder action
+            console.log(`Joining game ${gameId} as ${playerName}`);
+            alert(`Joining game ${gameId} as ${playerName}`);
+            
+            // Here you would send WebSocket message to join room
+            // Example: ws.send(JSON.stringify({ type: "JoinRoom", data: { room_id: gameId, name: playerName } }));
+        });
+    </script>
+</body>
+</html>
