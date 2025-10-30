@@ -1,686 +1,286 @@
+<!DOCTYPE html>
 <html>
-
 <head>
-        <title>BlackJack</title>
-        <script src="https://code.jquery.com/jquery-3.2.1.js"
-                integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous">
-
-                </script>
-
-        <!-- Latest compiled and minified CSS -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
-                integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
-                crossorigin="anonymous">
-
-        <!-- Optional theme -->
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
-                integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
-                crossorigin="anonymous">
-
-        <!-- Latest compiled and minified JavaScript -->
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
-                integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
-                crossorigin="anonymous"></script>
-
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css" />
-        <script>
-                cards = [
-                        {
-                                "name": "2c",
-                                "value": [2]
-                        },
-                        {
-                                "name": "2d",
-                                "value": [2]
-                        },
-                        {
-                                "name": "2h",
-                                "value": [2]
-                        },
-                        {
-                                "name": "2s",
-                                "value": [2]
-                        },
-                        {
-                                "name": "3c",
-                                "value": [3]
-                        },
-                        {
-                                "name": "3d",
-                                "value": [3]
-                        },
-                        {
-                                "name": "3h",
-                                "value": [3]
-                        },
-                        {
-                                "name": "3s",
-                                "value": [3]
-                        },
-                        {
-                                "name": "4c",
-                                "value": [4]
-                        },
-                        {
-                                "name": "4d",
-                                "value": [4]
-                        },
-                        {
-                                "name": "4h",
-                                "value": [4]
-                        },
-                        {
-                                "name": "4s",
-                                "value": [4]
-                        },
-                        {
-                                "name": "5c",
-                                "value": [5]
-                        },
-                        {
-                                "name": "5d",
-                                "value": [5]
-                        },
-                        {
-                                "name": "5h",
-                                "value": [5]
-                        },
-                        {
-                                "name": "5s",
-                                "value": [5]
-                        },
-                        {
-                                "name": "6c",
-                                "value": [6]
-                        },
-                        {
-                                "name": "6d",
-                                "value": [6]
-                        },
-                        {
-                                "name": "6h",
-                                "value": [6]
-                        },
-                        {
-                                "name": "6s",
-                                "value": [6]
-                        },
-                        {
-                                "name": "7c",
-                                "value": [7]
-                        },
-                        {
-                                "name": "7d",
-                                "value": [7]
-                        },
-                        {
-                                "name": "7h",
-                                "value": [7]
-                        },
-                        {
-                                "name": "7s",
-                                "value": [7]
-                        },
-                        {
-                                "name": "8c",
-                                "value": [8]
-                        },
-                        {
-                                "name": "8d",
-                                "value": [8]
-                        },
-                        {
-                                "name": "8h",
-                                "value": [8]
-                        },
-                        {
-                                "name": "8s",
-                                "value": [8]
-                        },
-                        {
-                                "name": "9c",
-                                "value": [9]
-                        },
-                        {
-                                "name": "9d",
-                                "value": [9]
-                        },
-                        {
-                                "name": "9h",
-                                "value": [9]
-                        },
-                        {
-                                "name": "9s",
-                                "value": [9]
-                        },
-                        {
-                                "name": "10c",
-                                "value": [10]
-                        },
-                        {
-                                "name": "10d",
-                                "value": [10]
-                        },
-                        {
-                                "name": "10h",
-                                "value": [10]
-                        },
-                        {
-                                "name": "10s",
-                                "value": [10]
-                        },
-                        {
-                                "name": "jc",
-                                "value": [10]
-                        },
-                        {
-                                "name": "jd",
-                                "value": [10]
-                        },
-                        {
-                                "name": "jh",
-                                "value": [10]
-                        },
-                        {
-                                "name": "js",
-                                "value": [10]
-                        },
-                        {
-                                "name": "qc",
-                                "value": [10]
-                        },
-                        {
-                                "name": "qd",
-                                "value": [10]
-                        },
-                        {
-                                "name": "qh",
-                                "value": [10]
-                        },
-                        {
-                                "name": "qs",
-                                "value": [10]
-                        },
-                        {
-                                "name": "kc",
-                                "value": [10]
-                        },
-                        {
-                                "name": "kd",
-                                "value": [10]
-                        },
-                        {
-                                "name": "kh",
-                                "value": [10]
-                        },
-                        {
-                                "name": "ks",
-                                "value": [10]
-                        },
-                        {
-                                "name": "ac",
-                                "value": [1, 11]
-                        },
-                        {
-                                "name": "ad",
-                                "value": [1, 11]
-                        },
-                        {
-                                "name": "ah",
-                                "value": [1, 11]
-                        },
-                        {
-                                "name": "as",
-                                "value": [1, 11]
-                        },
-
-                ];
-
-                cardNumber = ['a', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'j', 'q', 'k'];
-                cardType = ['c', 'd', 'h', 's'];
-
-                cardSelectedPlayer = [];
-                cardSelectedDealer = [];
-                status = 'hit';
-                resultDecided = false;
-
-
-                $(document).ready(function () {
-                        hit();
-                        stand();
-                        newgame();
-                        InitialInsertRandomCards();
-                        displayCurrentTotal();
-                        setTimeout(function () { checkforBlackJack(); }, 200);
-
-                });
-
-
-                // INSERTS CARD AT THE BEGINING OF THE GAME.
-                function InitialInsertRandomCards() {
-                        // insert first card for player.
-                        var playerCardOneName = selectCardName();
-                        $("#playerCardOne").attr('src', 'cards/' + playerCardOneName + '.png');
-                        cardSelectedPlayer.push(playerCardOneName);
-
-
-                        // insert second card for the player.
-                        playerCardTwoName = selectCardName();
-                        $("#playerCardTwo").attr('src', 'cards/' + playerCardTwoName + '.png');
-                        cardSelectedPlayer.push(playerCardTwoName);
-
-                        // insert first card for the dealer.
-                        playerCardTwoName = selectCardName();
-                        $("#dealerCardOne").attr('src', 'cards/' + playerCardTwoName + '.png');
-                        cardSelectedDealer.push(playerCardTwoName);
-
-
-                }
-
-                // SELECTS CARD NAME FOR EVERYTIME A CARD IS DEALT. DUPLICATE IS CHECKED.
-                function selectCardName() {
-                        var randCardNumber = cardNumber[Math.floor(Math.random() * cardNumber.length)];
-                        var randCardType = cardType[Math.floor(Math.random() * cardType.length)];
-                        var cardName = randCardNumber + randCardType;
-
-                        // check if card is already dealt and prevent duplication
-                        if (cardSelectedPlayer.includes(cardName) || cardSelectedDealer.includes(cardName)) {
-                                selectCardName();
-                        }
-                        return cardName;
-                }
-
-                // displays current total for both player and dealer.
-                function displayCurrentTotal() {
-                        // diplay current total for player.
-                        playerScore = 0;
-                        for (i = 0; i < cardSelectedPlayer.length; i++) {
-                                var currentCardIndex = cards.findIndex(x => x.name == cardSelectedPlayer[i]);
-                                if (cards[currentCardIndex].value.length > 1) {
-
-                                        if (playerScore < 11) {
-                                                playerScore += cards[currentCardIndex].value[1];
-                                        } else {
-                                                playerScore += cards[currentCardIndex].value[0];
-                                        }
-                                } else {
-                                        playerScore += cards[currentCardIndex].value[0];
-                                }
-                        }
-                        document.getElementById("playerTotal").innerHTML = playerScore;
-
-
-                        // display current total for the dealer.
-                        dealerScore = 0;
-                        for (i = 0; i < cardSelectedDealer.length; i++) {
-                                var currentCardIndex = cards.findIndex(x => x.name == cardSelectedDealer[i]);
-                                if (cards[currentCardIndex].value.length > 1) {
-                                        if (dealerScore < 11) {
-                                                dealerScore += cards[currentCardIndex].value[1];
-                                        } else {
-                                                dealerScore += cards[currentCardIndex].value[0];
-                                        }
-                                } else {
-                                        dealerScore += cards[currentCardIndex].value[0];
-                                }
-                        }
-                        document.getElementById("dealerTotal").innerHTML = dealerScore;
-
-                        // setTimeout(function(){checkResults();}, 200);
-                        checkResults();
-                }
-
-
-
-                // Function to trigger adding of new cards.
-                function hit() {
-                        $("#hit").click(function () {
-                                var ImageToAppend;
-                                switch (cardSelectedPlayer.length) {
-                                        case 2:
-                                                ImageToAppend = 'playerCardThree';
-                                                break;
-                                        case 3:
-                                                ImageToAppend = 'playerCardFour';
-                                                break;
-                                        case 4:
-                                                ImageToAppend = 'playerCardFive';
-                                                break;
-                                        case 5:
-                                                ImageToAppend = 'playerCardThree';
-                                                break;
-                                        case 6:
-                                                ImageToAppend = 'playerCardFour';
-                                                break;
-                                        case 7:
-                                                ImageToAppend = 'playerCardFive';
-                                                break;
-                                        case 8:
-                                                ImageToAppend = 'playerCardThree';
-                                                break;
-                                        case 9:
-                                                ImageToAppend = 'playerCardFour';
-                                                break;
-                                        case 10:
-                                                ImageToAppend = 'playerCardFive';
-                                                break;
-                                        default:
-                                                ImageToAppend = '';
-                                                break;
-                                }
-                                AddImageToId(ImageToAppend);
-                        });
-                }
-
-                // Function to trigger adding of new cards.
-                function addCardToDealerAfterStand() {
-                        var ImageToAppend;
-                        switch (cardSelectedDealer.length) {
-                                case 1:
-                                        ImageToAppend = 'dealerCardTwo';
-                                        break;
-                                case 2:
-                                        ImageToAppend = 'dealerCardThree';
-                                        break;
-                                case 3:
-                                        ImageToAppend = 'dealerCardFour';
-                                        break;
-                                case 4:
-                                        ImageToAppend = 'dealerCardFive';
-                                        break;
-                                case 5:
-                                        ImageToAppend = 'dealerCardTwo';
-                                        break;
-                                case 6:
-                                        ImageToAppend = 'dealerCardThree';
-                                        break;
-                                case 7:
-                                        ImageToAppend = 'dealerCardFour';
-                                        break;
-                                case 8:
-                                        ImageToAppend = 'dealerCardFive';
-                                        break;
-                                default:
-                                        ImageToAppend = '';
-                                        break;
-                        }
-                        AddImageToDealerId(ImageToAppend);
-                        if (!resultDecided) {
-                                setTimeout(function () { addCardToDealerAfterStand(); }, 3000);
-                        }
-
-                }
-
-
-                // Adds image to particular player id
-                function AddImageToId(ImageId) {
-                        var playerCardName = selectCardName();
-                        document.getElementById(ImageId).innerHTML = "<img class='animated flipInY' src='cards/" + playerCardName + ".png'>";
-                        cardSelectedPlayer.push(playerCardName);
-                        displayCurrentTotal();
-                }
-
-
-                // Adds image to particular dealer id
-                function AddImageToDealerId(ImageId) {
-                        var playerCardName = selectCardName();
-                        document.getElementById(ImageId).innerHTML = "<img class='animated flipInY'  src='cards/" + playerCardName + ".png'>";
-                        cardSelectedDealer.push(playerCardName);
-                        displayCurrentTotal();
-                }
-
-
-
-                // Handles when user hits stand. Fills in card for the dealer.
-                function stand() {
-                        $("#stand").click(function () {
-                                status = 'stand';
-                                addCardToDealerAfterStand();
-                                disableButtons();
-                        });
-                }
-
-                // Handles when the user hits new game.
-                function newgame() {
-                        $("#newgame").click(function () {
-                                location.reload();
-                        });
-                        $(".new-game").click(function () {
-                                location.reload();
-                        });
-                }
-
-
-                // checks all the conditions to decide who is the winner of the game.
-                function checkResults() {
-
-
-                        if (playerScore > 21) {
-                                resultDecided = true;
-                                disableButtons();
-                                lost();
-                        }
-
-                        if (playerScore < 22 && dealerScore < 22 && dealerScore >= playerScore && dealerScore > 16 && status == 'stand') {
-                                resultDecided = true;
-                                disableButtons();
-                                lost();
-
-                        }
-
-
-                        if (playerScore < 21 && dealerScore > 21 && status == 'stand') {
-                                resultDecided = true;
-                                disableButtons();
-                                win();
-
-                        }
-                        if (dealerScore > 21 && status == 'stand') {
-                                resultDecided = true;
-                                disableButtons();
-                                win();
-
-                        }
-                }
-
-                function checkforBlackJack() {
-                        if (playerScore == 21) {
-                                setTimeout(function () {
-                                        $('body').append('<div class="final won"><h1 class="animated slideInDown" style="color:white">BLACKJACK !!!</h1><br><p>Your Total: ' + playerScore + ' <br>Dealer Score: ' + dealerScore + ' <br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></div>');
-
-                                }, 3000)
-
-                                resultDecided = true;
-                        }
-                }
-
-                // handles winning of the game.
-                function win() {
-                        setTimeout(function () {
-                                $('body').append('<div class="final won"><h1 class="animated slideInDown " style="color:white">BLACKJACK !!!</h1><br><p>Your Total: ' + playerScore + ' <br>Dealer Score: ' + dealerScore + ' <br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></div>');
-
-                        }, 3000)
-                        resultDecided = true;
-                }
-
-
-                // Informs the user that you lost.
-                function lost() {
-                        setTimeout(function () {
-                                $('body').append('<div class="final lose"><h1 class="animated slideInDown" style="color:white"></h1><br><p class="">Your Loss<br/>Your Total: ' + playerScore + ' <br>Dealer Score: ' + dealerScore + ' <br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></div>');
-
-                        }, 3000)
-
-                        resultDecided = true;
-                }
-
-
-                function disableButtons() {
-                        $("#hit").prop('disabled', 'disabled');
-                        $("#stand").prop('disabled', 'disabled');
-                }
-        </script>
-
-        <style>
-                .center {
-                        position: absolute;
-                        margin: -100px 0 0 -200px;
-                        top: 10%;
-                        left: 25%;
-                }
-
-                .bg-gray {
-                        background-color: #D3D3D3;
-                        color: rgb(15, 226, 39);
-                }
-
-                .top40 {
-                        margin-top: 40%;
-                }
-
-                .final {
-                        position: fixed;
-                        color: white;
-                        top: 30%;
-                        left: 30%;
-                        width: 30%;
-                        text-align: center;
-                        background: green;
-                }
-
-                .final.lose {
-                        background:red;
-                }
-        </style>
+  <meta charset="utf-8" />
+  <title>BlackJack</title>
+  <script src="https://code.jquery.com/jquery-3.2.1.js"
+          integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+        integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+          integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css" />
+
+  <style>
+    body.bg-gray { background-color: #D3D3D3; }
+    .center { position: relative; margin: 20px auto; max-width: 1100px; }
+    .cards-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cards-row img { height: 120px; border-radius: 6px; }
+    .final {
+      position: fixed; color: white; top: 30%; left: 50%; transform: translateX(-50%);
+      width: 360px; text-align: center; background: green; padding: 18px; border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .final.lose { background: #c0392b; }
+    .totals { font-weight: bold; }
+  </style>
+
+  <script>
+    const cards = [
+      // 2-10
+      ...['c','d','h','s'].flatMap(s => [
+        { name: '2'+s, value:[2] }, { name: '3'+s, value:[3] }, { name: '4'+s, value:[4] },
+        { name: '5'+s, value:[5] }, { name: '6'+s, value:[6] }, { name: '7'+s, value:[7] },
+        { name: '8'+s, value:[8] }, { name: '9'+s, value:[9] }, { name: '10'+s, value:[10] },
+        { name: 'j'+s, value:[10] }, { name: 'q'+s, value:[10] }, { name: 'k'+s, value:[10] }
+      ]),
+      // Aces
+      { name: 'ac', value:[1,11] },{ name: 'ad', value:[1,11] },{ name: 'ah', value:[1,11] },{ name: 'as', value:[1,11] }
+    ];
+
+    const cardNumber = ['a','2','3','4','5','6','7','8','9','10','j','q','k'];
+    const cardType   = ['c','d','h','s'];
+
+    let cardSelectedPlayer = [];
+    let cardSelectedDealer = [];
+    let status = 'hit';
+    let resultDecided = false;
+
+    function selectCardName() {
+      const randCardNumber = cardNumber[Math.floor(Math.random() * cardNumber.length)];
+      const randCardType   = cardType  [Math.floor(Math.random() * cardType.length)];
+      const cardName = randCardNumber + randCardType;
+      // Prevent duplication (return recursion result!)
+      if (cardSelectedPlayer.includes(cardName) || cardSelectedDealer.includes(cardName)) {
+        return selectCardName();
+      }
+      return cardName;
+    }
+
+    function computeScore(hand) {
+      // hand: array of 'name' strings like 'as','10d'
+      let sum = 0;
+      let aces = 0;
+
+      for (let i = 0; i < hand.length; i++) {
+        const idx = cards.findIndex(x => x.name === hand[i]);
+        const values = cards[idx].value;
+        if (values.length > 1) {
+          aces += 1; // count ace; add later
+        } else {
+          sum += values[0];
+        }
+      }
+      // First, count all aces as 11
+      sum += aces * 11;
+      // Then demote as many aces as needed to 1 until <= 21
+      while (sum > 21 && aces > 0) {
+        sum -= 10; // 11 -> 1
+        aces -= 1;
+      }
+      return sum;
+    }
+
+    function updateTotals() {
+      const playerScore = computeScore(cardSelectedPlayer);
+      const dealerScore = computeScore(cardSelectedDealer);
+      $('#playerTotal').text(playerScore);
+      $('#dealerTotal').text(dealerScore);
+      return { playerScore, dealerScore };
+    }
+
+    function appendCardTo(containerSelector, cardName) {
+      const img = $('<img/>', { src: 'cards/' + cardName + '.png', class: 'animated flipInY' });
+      $(containerSelector).append(img);
+    }
+
+    function dealToPlayer() {
+      const name = selectCardName();
+      cardSelectedPlayer.push(name);
+      appendCardTo('#playerCards', name);
+      const { playerScore } = updateTotals();
+      if (playerScore > 21) {
+        endWithLoss();
+        return;
+      }
+      if (playerScore === 21) {
+        checkForBlackjack();
+        if (!resultDecided && playerScore === 21) {
+          disableButtons();
+          endWithWin();
+        }
+      }
+    }
+
+    function dealToDealer() {
+      const name = selectCardName();
+      cardSelectedDealer.push(name);
+      appendCardTo('#dealerCards', name);
+      updateTotals();
+    }
+
+    function disableButtons() {
+      $('#hit').prop('disabled', true);
+      $('#stand').prop('disabled', true);
+    }
+    function enableButtons() {
+      $('#hit').prop('disabled', false);
+      $('#stand').prop('disabled', false);
+    }
+
+    // ---------------- Game Flow ----------------
+    function initialDeal() {
+      // Player two cards
+      dealToPlayer();
+      dealToPlayer();
+      // Dealer one up-card
+      dealToDealer();
+      // Optional: Check for player Blackjack (21 on first 2)
+      setTimeout(() => checkForBlackjack(), 200);
+    }
+
+    function playerHit() {
+      $('#hit').on('click', function(){
+        if (resultDecided) return;
+        dealToPlayer();
+      });
+    }
+
+    function playerStand() {
+      $('#stand').on('click', async function(){
+        if (resultDecided) return;
+        status = 'stand';
+        disableButtons();
+        // Dealer must hit until total >= 17 (and then STOP)
+        // We animate with short pauses for UX.
+        let scores = updateTotals();
+        while (scores.dealerScore < 17) {
+          dealToDealer();
+          scores = updateTotals();
+          // short pause
+          await new Promise(r => setTimeout(r, 600));
+        }
+        // Decide result now that dealer stands on 17+
+        decideOutcome();
+      });
+    }
+
+    function newGame() {
+      $('#newgame, .new-game').on('click', function(){ window.location.reload(); });
+    }
+
+    function decideOutcome() {
+      const { playerScore, dealerScore } = updateTotals();
+      if (playerScore > 21) return endWithLoss();
+      if (dealerScore > 21) return endWithWin();
+      // Both <= 21 and dealer has stood
+      if (dealerScore >= playerScore) return endWithLoss();
+      return endWithWin();
+    }
+
+    function checkForBlackjack() {
+      const { playerScore } = updateTotals();
+      if (playerScore === 21 && cardSelectedPlayer.length === 2) {
+        // Natural blackjack
+        setTimeout(() => {
+          $('body').append(
+            '<div class="final won"><h3 class="animated slideInDown" style="color:white">BLACKJACK !!!</h3>' +
+            '<p>Your Total: ' + playerScore + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+            '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+          );
+        }, 300);
+        resultDecided = true;
+        disableButtons();
+      }
+    }
+
+    function endWithWin() {
+      if (resultDecided) return;
+      setTimeout(() => {
+        $('body').append(
+          '<div class="final won"><h3 class="animated slideInDown" style="color:white">You Win!</h3>' +
+          '<p>Your Total: ' + computeScore(cardSelectedPlayer) + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+          '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+        );
+      }, 300);
+      resultDecided = true;
+    }
+
+    function endWithLoss() {
+      if (resultDecided) return;
+      setTimeout(() => {
+        $('body').append(
+          '<div class="final lose"><h3 class="animated slideInDown" style="color:white">Your Loss</h3>' +
+          '<p>Your Total: ' + computeScore(cardSelectedPlayer) + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+          '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+        );
+      }, 300);
+      resultDecided = true;
+    }
+
+    // ---------------- Init ----------------
+    $(document).ready(function () {
+      initialDeal();
+      updateTotals();
+      playerHit();
+      playerStand();
+      newGame();
+      enableButtons();
+    });
+  </script>
 </head>
 
-
 <body class="bg-gray">
-        <!-- The main div of the program -->
+  <div class="center container">
 
-        <div class="center container">
-                <div>
-                        <div class="jumbotron">
-                                <center><h1>Black Jack</h1></center>
-                        </div>
-                        <div class="panel panel-primary">
-                                <div class="panel-heading">Player</div>
-                                <div class="panel-body">
-                                        <div class="program">
-                                                <div class="row ">
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div class="thumbnail">
-                                                                        <img id="playerCardOne" alt="/cards/back.png">
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div class="thumbnail">
-                                                                        <img id="playerCardTwo" alt="/cards/back.png">
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="playerCardThree" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="playerCardFour" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="playerCardFive" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div class="top40 alert alert-info">
-                                                                        Total: <b id="playerTotal"></b>
-                                                                </div>
-                                                        </div>
-                                                </div>
-                                        </div>
-
-                                </div>
-
-                        </div>
-
-                        <div class="panel panel-primary">
-                                <div class="panel-heading">Dealer</div>
-                                <div class="panel-body">
-                                        <div class="program">
-                                                <div class="row ">
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div class="thumbnail">
-                                                                        <img id="dealerCardOne" src="cards/back.png">
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="dealerCardTwo" class="thumbnail">
-                                                                        <img src="cards/back.png">
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="dealerCardThree" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="dealerCardFour" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div id="dealerCardFive" class="thumbnail">
-                                                                        <img src='cards/back.png' ;>
-                                                                </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-2">
-                                                                <div class="top40 alert alert-info">
-                                                                        Total: <b id="dealerTotal"></b>
-                                                                </div>
-                                                        </div>
-                                                </div>
-                                        </div>
-
-                                </div>
-
-                        </div>
-
-
-                        <div class="panel panel-primary">
-                                <div class="panel-heading">Actions</div>
-                                <div class="panel-body">
-                                        <div class="program">
-                                                <div class="row ">
-                                                        <div class="col-sm-6 col-md-4">
-                                                                <button class="btn btn-success" id="hit">
-                                                                        HIT
-                                                                </button>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-4">
-                                                                <button class="btn btn-warning" id="stand">
-                                                                        STAND
-                                                                </button>
-                                                        </div>
-                                                        <div class="col-sm-6 col-md-4" id="newgame" id="stand">
-                                                                <button class="btn btn-primary">
-                                                                        NEW GAME
-                                                                </button>
-                                                        </div>
-                                                </div>
-                                        </div>
-
-                                </div>
-
-                        </div>
-
-                </div>
-
-
+    <div class="panel panel-primary">
+      <div class="panel-heading">Player</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div id="playerCards" class="cards-row"></div>
+          </div>
+          <div class="col-sm-12">
+            <div class="alert alert-info totals">Total: <span id="playerTotal"></span></div>
+          </div>
         </div>
+      </div>
+    </div>
 
+    <div class="panel panel-primary">
+      <div class="panel-heading">Dealer</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div id="dealerCards" class="cards-row"></div>
+          </div>
+          <div class="col-sm-12">
+            <div class="alert alert-info totals">Total: <span id="dealerTotal"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-primary">
+      <div class="panel-heading">Actions</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <button class="btn btn-success" id="hit">HIT</button>
+          </div>
+          <div class="col-sm-4">
+            <button class="btn btn-warning" id="stand">STAND</button>
+          </div>
+          <div class="col-sm-4" id="newgame">
+            <button class="btn btn-primary">NEW GAME</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
-
 </html>
