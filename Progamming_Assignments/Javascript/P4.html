@@ -32,11 +32,11 @@
   <script>
     const cards = [
       // 2-10
-      ...['c','d','h','s'].flatMap(s => [
-        { name: '2'+s, value:[2] }, { name: '3'+s, value:[3] }, { name: '4'+s, value:[4] },
-        { name: '5'+s, value:[5] }, { name: '6'+s, value:[6] }, { name: '7'+s, value:[7] },
-        { name: '8'+s, value:[8] }, { name: '9'+s, value:[9] }, { name: '10'+s, value:[10] },
-        { name: 'j'+s, value:[10] }, { name: 'q'+s, value:[10] }, { name: 'k'+s, value:[10] }
+      ...['c','d','h','s'].flatMap(suit => [
+        { name: '2'+suit, value:[2] }, { name: '3'+suit, value:[3] }, { name: '4'+suit, value:[4] },
+        { name: '5'+suit, value:[5] }, { name: '6'+suit, value:[6] }, { name: '7'+suit, value:[7] },
+        { name: '8'+suit, value:[8] }, { name: '9'+suit, value:[9] }, { name: '10'+suit, value:[10] },
+        { name: 'j'+suit, value:[10] }, { name: 'q'+suit, value:[10] }, { name: 'k'+suit, value:[10] }
       ]),
       // Aces
       { name: 'ac', value:[1,11] },{ name: 'ad', value:[1,11] },{ name: 'ah', value:[1,11] },{ name: 'as', value:[1,11] }
@@ -49,12 +49,13 @@
     let cardSelectedDealer = [];
     let status = 'hit';
     let resultDecided = false;
+    let hiddenDealerCard = null;
+    let hiddenRevealed = false;
 
     function selectCardName() {
       const randCardNumber = cardNumber[Math.floor(Math.random() * cardNumber.length)];
       const randCardType   = cardType  [Math.floor(Math.random() * cardType.length)];
       const cardName = randCardNumber + randCardType;
-      // Prevent duplication (return recursion result!)
       if (cardSelectedPlayer.includes(cardName) || cardSelectedDealer.includes(cardName)) {
         return selectCardName();
       }
@@ -132,14 +133,14 @@
       $('#stand').prop('disabled', false);
     }
 
-    // ---------------- Game Flow ----------------
     function initialDeal() {
-      // Player two cards
       dealToPlayer();
       dealToPlayer();
-      // Dealer one up-card
       dealToDealer();
-      // Optional: Check for player Blackjack (21 on first 2)
+      hiddenDealerCard = selectCardName();
+      const hiddenImg = $('<img/>', { id: 'dealerHidden', src: 'cards/back.png', class: 'animated flipInY' });
+      $('#dealerCards').append(hiddenImg);
+      hiddenRevealed = false;
       setTimeout(() => checkForBlackjack(), 200);
     }
 
@@ -154,17 +155,25 @@
       $('#stand').on('click', async function(){
         if (resultDecided) return;
         status = 'stand';
+        if (!hiddenRevealed && hiddenDealerCard) {
+          const $hidden = $('#dealerHidden');
+          $hidden.attr('src', 'cards/' + hiddenDealerCard + '.png');
+          $hidden.removeClass('animated flipInY');
+          if ($hidden.length && $hidden[0]) { void $hidden[0].offsetWidth; }
+          $hidden.addClass('animated flipInY');
+          $hidden.removeAttr('id');
+
+          cardSelectedDealer.push(hiddenDealerCard);
+          hiddenRevealed = true;
+          hiddenDealerCard = null;
+        }
         disableButtons();
-        // Dealer must hit until total >= 17 (and then STOP)
-        // We animate with short pauses for UX.
         let scores = updateTotals();
         while (scores.dealerScore < 17) {
+          await new Promise(r => setTimeout(r, 600));
           dealToDealer();
           scores = updateTotals();
-          // short pause
-          await new Promise(r => setTimeout(r, 600));
         }
-        // Decide result now that dealer stands on 17+
         decideOutcome();
       });
     }
@@ -177,7 +186,6 @@
       const { playerScore, dealerScore } = updateTotals();
       if (playerScore > 21) return endWithLoss();
       if (dealerScore > 21) return endWithWin();
-      // Both <= 21 and dealer has stood
       if (dealerScore >= playerScore) return endWithLoss();
       return endWithWin();
     }
@@ -222,7 +230,7 @@
       resultDecided = true;
     }
 
-    // ---------------- Init ----------------
+    // Initialize game on document ready
     $(document).ready(function () {
       initialDeal();
       updateTotals();
