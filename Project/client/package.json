@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-<<<<<<< HEAD
     "@mantine/core": "^8.3.6",
     "@mantine/form": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
@@ -19,26 +18,13 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.5",
-=======
-    "@mantine/core": "^8.3.3",
-    "@mantine/hooks": "^8.3.3",
-    "@mantine/notifications": "^8.3.3",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.4",
->>>>>>> origin/dev
     "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@types/node": "^24.6.0",
-<<<<<<< HEAD
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-=======
-    "@types/react": "^19.1.16",
-    "@types/react-dom": "^19.1.9",
->>>>>>> origin/dev
     "@vitejs/plugin-react": "^5.0.4",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -46,10 +32,6 @@
     "globals": "^16.4.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
-<<<<<<< HEAD
     "vite": "^7.1.10"
-=======
-    "vite": "^7.1.12"
->>>>>>> origin/dev
   }
 }
