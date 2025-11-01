@@ -1,7 +1,10 @@
 {
+<<<<<<< HEAD
   "compilerOptions": {
      "jsx": "react-jsx",
   },
+=======
+>>>>>>> origin/dev
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Echo Test</title>
+</head>
+<body>
+    <h1>WebSocket Echo Test</h1>
+    <input type="text" id="messageInput" placeholder="Type a message">
+    <button id="sendBtn">Send</button>
+    <pre id="log"></pre>
+
+    <script>
+        const logEl = document.getElementById("log");
+        const inputEl = document.getElementById("messageInput");
+        const sendBtn = document.getElementById("sendBtn");
+
+        // Replace port if your Rust server listens on a different port
+        const ws = new WebSocket("ws://127.0.0.1:3000/ws");
+
+        ws.onopen = () => log("Connected to server.");
+        ws.onclose = () => log("Disconnected from server.");
+        ws.onerror = (err) => log("WebSocket error: " + err);
+        ws.onmessage = (event) => log("Received: " + event.data);
+
+        sendBtn.onclick = () => {
+            const msg = inputEl.value;
+            if (!msg) return;
+
+            // Wrap the message in your ClientMessage JSON
+            const clientMessage = {
+                type: "Echo",
+                data: { message: msg }
+            };
+
+            ws.send(JSON.stringify(clientMessage));
+            log("Sent: " + JSON.stringify(clientMessage));
+            inputEl.value = "";
+        };
+
+        function log(msg) {
+            logEl.textContent += msg + "\n";
+        }
+    </script>
+</body>
+</html>
