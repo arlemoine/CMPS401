@@ -9,7 +9,7 @@ impl Config {
     pub fn default() -> Self {
         Self {
             host: "127.0.0.1",
-            port: 3000,
+            port: 3001,
             log_level: tracing::Level::INFO,
         }
     }
