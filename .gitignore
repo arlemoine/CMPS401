@@ -1,0 +1,34 @@
+# Combination to ignore all files without extensions
+
+## Ignore All
+*
+## Unignore all with extensions
+!*.*
+## Unignore all dirs
+!*/
+
+# Rust compilation data
+Rust/**/target/
+
+# Fortran compilation data
+*.out
+
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+
+# Rust
+target/
+Cargo.lock
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Misc
+.env
+.env.*
