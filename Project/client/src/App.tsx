@@ -1,19 +1,12 @@
 // client/src/App.tsx
-<<<<<<< HEAD
 import { useEffect, useState, type JSX } from "react";
 import { Container, Title, Alert, Button, Group } from "@mantine/core";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
-=======
-import { useEffect, useState } from "react";
-import { Container, Title, Alert } from "@mantine/core";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
->>>>>>> origin/dev
 import { ws } from "./api/ws";
 import { useStore } from "./state/store";
 import CreateJoin from "./pages/CreateJoin";
 import Match from "./pages/Match";
 import Board from "./pages/Board";
-<<<<<<< HEAD
 import bg from "./assets/bg20.jpg";
 import { auth } from "./firebase"; // ✅ import firebase auth
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -42,31 +35,16 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 
 // ---------------------- APP ROUTES ----------------------
 function AppRoutes({ user }: { user: any }) {
-=======
-import bg from "./assets/bg9.jpg";
-
-function AppRoutes() {
->>>>>>> origin/dev
   const navigate = useNavigate();
   const [error, setError] = useState<string>("");
   const [status, setStatus] = useState<"connected" | "disconnected">("disconnected");
 
-<<<<<<< HEAD
   const { setMatchId, setPlayers, setMatchStatus, setMe, setBoard, setTurn } = useStore();
 
   // 🔗 Connect to backend WS
   useEffect(() => {
     ws.connect();
 
-=======
-  const { setMatchId, setPlayers, setMatchStatus, setMe, setBoard, 
-    setTurn  } = useStore();
-
-  useEffect(() => {
-    ws.connect();
-
-    // Handlers for WS events
->>>>>>> origin/dev
     const offOpen = ws.onOpen(() => {
       console.log("[WS] Connected");
       setStatus("connected");
@@ -96,17 +74,12 @@ function AppRoutes() {
           const { matchId, you } = msg.payload;
           setMatchId(matchId);
           setMe(you);
-<<<<<<< HEAD
           console.log("[App] Joined match, navigating to:", matchId);
-=======
-           console.log("[App] Joined match, navigating to:", matchId);
->>>>>>> origin/dev
           navigate(`/match/${matchId}`);
           break;
         }
 
         case "state_update": {
-<<<<<<< HEAD
           const { matchId, players, status, board, turn } = msg.payload;
           console.log("[App] State update:", { matchId, status, players: players.length });
 
@@ -122,24 +95,6 @@ function AppRoutes() {
           }
           break;
         }
-=======
-        const { matchId, players, status, board, turn } = msg.payload;
-        console.log("[App] State update:", { matchId, status, players: players.length });
-        
-        setMatchId(matchId);
-        setPlayers(players);
-        setMatchStatus(status);
-        setBoard(board || Array(9).fill(null));
-        setTurn(turn);
-        
-        // If we're on the match page and game starts, navigate to board
-        if (status === "IN_PROGRESS" && window.location.pathname.includes('/match/')) {
-          console.log("[App] Game started, navigating to board");
-          navigate(`/board/${matchId}`);
-        }
-        break;
-      }
->>>>>>> origin/dev
 
         case "error":
           console.warn("[WS] Server error", msg.payload);
@@ -159,7 +114,6 @@ function AppRoutes() {
   return (
     <>
       {error && <Alert color="red" mb="md">{error}</Alert>}
-<<<<<<< HEAD
       {status === "disconnected" && <Alert color="yellow" mb="md">Connecting to server...</Alert>}
 
       <Routes>
@@ -175,21 +129,11 @@ function AppRoutes() {
 
         {/* Default fallback */}
         <Route path="*" element={<Navigate to="/" />} />
-=======
-      {status === "disconnected" && (
-        <Alert color="yellow" mb="md">Connecting to server...</Alert>
-      )}
-      <Routes>
-        <Route path="/" element={<CreateJoin />} />
-        <Route path="/match/:id" element={<Match />} />
-        <Route path="/board/:id" element={<Board />} />
->>>>>>> origin/dev
       </Routes>
     </>
   );
 }
 
-<<<<<<< HEAD
 // ---------------------- APP WRAPPER ----------------------
 export default function App() {
   const basename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
@@ -266,32 +210,6 @@ export default function App() {
           <AppRoutes user={user} />
           </Container>
         </Container>
-=======
-export default function App() {
-  const basename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-  return (
-    <BrowserRouter basename={basename}>
-       <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        backgroundImage: `url(${bg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        color: "white",
-      }}
-    >
-      <Container size="sm" style={{ paddingTop: 40 }}>
-        <Title order={2} ta="center" mb="lg">
-          Tic-Tac-Toe Prototype
-        </Title>
-        <AppRoutes />
-      </Container>
->>>>>>> origin/dev
       </div>
     </BrowserRouter>
   );
