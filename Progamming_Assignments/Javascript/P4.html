@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>BlackJack</title>
+  <script src="https://code.jquery.com/jquery-3.2.1.js"
+          integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+        integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+          integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css" />
+
+  <style>
+    body.bg-gray { background-color: #D3D3D3; }
+    .center { position: relative; margin: 20px auto; max-width: 1100px; }
+    .cards-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cards-row img { height: 120px; border-radius: 6px; }
+    .final {
+      position: fixed; color: white; top: 30%; left: 50%; transform: translateX(-50%);
+      width: 360px; text-align: center; background: green; padding: 18px; border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .final.lose { background: #c0392b; }
+    .totals { font-weight: bold; }
+  </style>
+
+  <script>
+    const cards = [
+      // 2-10
+      ...['c','d','h','s'].flatMap(suit => [
+        { name: '2'+suit, value:[2] }, { name: '3'+suit, value:[3] }, { name: '4'+suit, value:[4] },
+        { name: '5'+suit, value:[5] }, { name: '6'+suit, value:[6] }, { name: '7'+suit, value:[7] },
+        { name: '8'+suit, value:[8] }, { name: '9'+suit, value:[9] }, { name: '10'+suit, value:[10] },
+        { name: 'j'+suit, value:[10] }, { name: 'q'+suit, value:[10] }, { name: 'k'+suit, value:[10] }
+      ]),
+      // Aces
+      { name: 'ac', value:[1,11] },{ name: 'ad', value:[1,11] },{ name: 'ah', value:[1,11] },{ name: 'as', value:[1,11] }
+    ];
+
+    const cardNumber = ['a','2','3','4','5','6','7','8','9','10','j','q','k'];
+    const cardType   = ['c','d','h','s'];
+
+    let cardSelectedPlayer = [];
+    let cardSelectedDealer = [];
+    let status = 'hit';
+    let resultDecided = false;
+    let hiddenDealerCard = null;
+    let hiddenRevealed = false;
+
+    function selectCardName() {
+      const randCardNumber = cardNumber[Math.floor(Math.random() * cardNumber.length)];
+      const randCardType   = cardType  [Math.floor(Math.random() * cardType.length)];
+      const cardName = randCardNumber + randCardType;
+      if (cardSelectedPlayer.includes(cardName) || cardSelectedDealer.includes(cardName)) {
+        return selectCardName();
+      }
+      return cardName;
+    }
+
+    function computeScore(hand) {
+      // hand: array of 'name' strings like 'as','10d'
+      let sum = 0;
+      let aces = 0;
+
+      for (let i = 0; i < hand.length; i++) {
+        const idx = cards.findIndex(x => x.name === hand[i]);
+        const values = cards[idx].value;
+        if (values.length > 1) {
+          aces += 1; // count ace; add later
+        } else {
+          sum += values[0];
+        }
+      }
+      // First, count all aces as 11
+      sum += aces * 11;
+      // Then demote as many aces as needed to 1 until <= 21
+      while (sum > 21 && aces > 0) {
+        sum -= 10; // 11 -> 1
+        aces -= 1;
+      }
+      return sum;
+    }
+
+    function updateTotals() {
+      const playerScore = computeScore(cardSelectedPlayer);
+      const dealerScore = computeScore(cardSelectedDealer);
+      $('#playerTotal').text(playerScore);
+      $('#dealerTotal').text(dealerScore);
+      return { playerScore, dealerScore };
+    }
+
+    function appendCardTo(containerSelector, cardName) {
+      const img = $('<img/>', { src: 'cards/' + cardName + '.png', class: 'animated flipInY' });
+      $(containerSelector).append(img);
+    }
+
+    function dealToPlayer() {
+      const name = selectCardName();
+      cardSelectedPlayer.push(name);
+      appendCardTo('#playerCards', name);
+      const { playerScore } = updateTotals();
+      if (playerScore > 21) {
+        endWithLoss();
+        return;
+      }
+      if (playerScore === 21) {
+        checkForBlackjack();
+        if (!resultDecided && playerScore === 21) {
+          disableButtons();
+          endWithWin();
+        }
+      }
+    }
+
+    function dealToDealer() {
+      const name = selectCardName();
+      cardSelectedDealer.push(name);
+      appendCardTo('#dealerCards', name);
+      updateTotals();
+    }
+
+    function disableButtons() {
+      $('#hit').prop('disabled', true);
+      $('#stand').prop('disabled', true);
+    }
+    function enableButtons() {
+      $('#hit').prop('disabled', false);
+      $('#stand').prop('disabled', false);
+    }
+
+    function initialDeal() {
+      dealToPlayer();
+      dealToPlayer();
+      dealToDealer();
+      hiddenDealerCard = selectCardName();
+      const hiddenImg = $('<img/>', { id: 'dealerHidden', src: 'cards/back.png', class: 'animated flipInY' });
+      $('#dealerCards').append(hiddenImg);
+      hiddenRevealed = false;
+      setTimeout(() => checkForBlackjack(), 200);
+    }
+
+    function playerHit() {
+      $('#hit').on('click', function(){
+        if (resultDecided) return;
+        dealToPlayer();
+      });
+    }
+
+    function playerStand() {
+      $('#stand').on('click', async function(){
+        if (resultDecided) return;
+        status = 'stand';
+        if (!hiddenRevealed && hiddenDealerCard) {
+          const $hidden = $('#dealerHidden');
+          $hidden.attr('src', 'cards/' + hiddenDealerCard + '.png');
+          $hidden.removeClass('animated flipInY');
+          if ($hidden.length && $hidden[0]) { void $hidden[0].offsetWidth; }
+          $hidden.addClass('animated flipInY');
+          $hidden.removeAttr('id');
+
+          cardSelectedDealer.push(hiddenDealerCard);
+          hiddenRevealed = true;
+          hiddenDealerCard = null;
+        }
+        disableButtons();
+        let scores = updateTotals();
+        while (scores.dealerScore < 17) {
+          await new Promise(r => setTimeout(r, 600));
+          dealToDealer();
+          scores = updateTotals();
+        }
+        decideOutcome();
+      });
+    }
+
+    function newGame() {
+      $('#newgame, .new-game').on('click', function(){ window.location.reload(); });
+    }
+
+    function decideOutcome() {
+      const { playerScore, dealerScore } = updateTotals();
+      if (playerScore > 21) return endWithLoss();
+      if (dealerScore > 21) return endWithWin();
+      if (dealerScore >= playerScore) return endWithLoss();
+      return endWithWin();
+    }
+
+    function checkForBlackjack() {
+      const { playerScore } = updateTotals();
+      if (playerScore === 21 && cardSelectedPlayer.length === 2) {
+        // Natural blackjack
+        setTimeout(() => {
+          $('body').append(
+            '<div class="final won"><h3 class="animated slideInDown" style="color:white">BLACKJACK !!!</h3>' +
+            '<p>Your Total: ' + playerScore + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+            '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+          );
+        }, 300);
+        resultDecided = true;
+        disableButtons();
+      }
+    }
+
+    function endWithWin() {
+      if (resultDecided) return;
+      setTimeout(() => {
+        $('body').append(
+          '<div class="final won"><h3 class="animated slideInDown" style="color:white">You Win!</h3>' +
+          '<p>Your Total: ' + computeScore(cardSelectedPlayer) + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+          '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+        );
+      }, 300);
+      resultDecided = true;
+    }
+
+    function endWithLoss() {
+      if (resultDecided) return;
+      setTimeout(() => {
+        $('body').append(
+          '<div class="final lose"><h3 class="animated slideInDown" style="color:white">Your Loss</h3>' +
+          '<p>Your Total: ' + computeScore(cardSelectedPlayer) + '<br>Dealer Score: ' + computeScore(cardSelectedDealer) +
+          '<br><button onClick="window.location.reload()" class="new-game btn btn-success">New Game</button></p></div>'
+        );
+      }, 300);
+      resultDecided = true;
+    }
+
+    // Initialize game on document ready
+    $(document).ready(function () {
+      initialDeal();
+      updateTotals();
+      playerHit();
+      playerStand();
+      newGame();
+      enableButtons();
+    });
+  </script>
+</head>
+
+<body class="bg-gray">
+  <div class="center container">
+
+    <div class="panel panel-primary">
+      <div class="panel-heading">Player</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div id="playerCards" class="cards-row"></div>
+          </div>
+          <div class="col-sm-12">
+            <div class="alert alert-info totals">Total: <span id="playerTotal"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-primary">
+      <div class="panel-heading">Dealer</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-12">
+            <div id="dealerCards" class="cards-row"></div>
+          </div>
+          <div class="col-sm-12">
+            <div class="alert alert-info totals">Total: <span id="dealerTotal"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-primary">
+      <div class="panel-heading">Actions</div>
+      <div class="panel-body">
+        <div class="row">
+          <div class="col-sm-4">
+            <button class="btn btn-success" id="hit">HIT</button>
+          </div>
+          <div class="col-sm-4">
+            <button class="btn btn-warning" id="stand">STAND</button>
+          </div>
+          <div class="col-sm-4" id="newgame">
+            <button class="btn btn-primary">NEW GAME</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
