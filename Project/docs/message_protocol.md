@@ -39,7 +39,7 @@ Used primarily for testing connectivity and latency.
 
 ### 2. GameRoom
 
-Handles operations related to game room management.
+Handles operations related to joining or leaving a game room. To join a room, use the keyword "join." **If the room does not exist**, it will be created. To leave a room, use the keyword "leave." 
 
 **Example:**
 
@@ -47,9 +47,9 @@ Handles operations related to game room management.
 {
   "type": "GameRoom",
   "data": {
-    "roomId": "HQCU",
-    "action": "join",
-    "player": "player1"
+    "action": "join", // "join" or "leave"
+    "player_name": "John",
+    "game_id": "HQCU",
   }
 }
 ```

@@ -35,7 +35,7 @@ pub struct EchoPayload {
 /// Payload for GameRoom message type
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GameRoomPayload {
-    pub operation: String, // "join" or "leave"
+    pub action: String, // "join" or "leave"
     pub player_name: String,
     pub game_id: String,
 }
