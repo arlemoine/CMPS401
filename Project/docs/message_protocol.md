@@ -39,7 +39,7 @@ Used primarily for testing connectivity and latency.
 
 ### 2. GameRoom
 
-Handles operations related to joining or leaving a game room. To join a room, use the keyword "join." **If the room does not exist**, it will be created. To leave a room, use the keyword "leave." 
+Handles operations related to joining or leaving a game room. To join a room, use the keyword "join." **If the room does not exist**, it will be created. To leave a room, use the keyword "leave." If a game has been played and it is desirable to reset the state of the game in order to play again, the keyword "reset" can be passed to the server, telling the server to reset the state of the game and pass it back to the frontend.
 
 **Example:**
 
@@ -47,9 +47,56 @@ Handles operations related to joining or leaving a game room. To join a room, us
 {
   "type": "GameRoom",
   "data": {
-    "action": "join", // "join" or "leave"
+    "action": "join", // "join", "leave", "reset"
     "player_name": "John",
     "game_id": "HQCU",
+  }
+}
+```
+
+### 3. Chat
+
+Handles operations related to sending and receiving chat messages in a given game room. The frontend utilizes the "send" keyword for the action while the backend broadcasts to everyone in the game room via the "broadcast" keyword.
+
+**Example:** 
+
+```json
+{
+  "type": "Chat",
+  "data": {
+    "action": "send", // "send" or "broadcast"
+    "game_id": "HQCU", // Specifies game room related to the chat
+    "player_name": "John", // Specifies who sent the message
+    "chat_message": "Good game!", // Contents of the chat message
+  }
+}
+```
+
+### 4. TicTacToe
+
+Handles operations related to the game state and actions of the game TicTacToe. Note that messages differ in that only the choice made is needed to be sent to the server while the server needs to send the entire state of the game back to the frontend. The state of the game can efficiently be summed up in a handful of status messages (as well as the state of the board) as shown in the example.
+
+**Example (Client -> Server):** 
+
+```json
+{
+  "type": "TicTacToe",
+  "data": {
+    "whos_turn": "x", // "x", "o"
+    "choice": "A1", // Convention is A1 to C3 where letter = row and number = column
+  }
+}
+```
+
+**Example (Server -> Client):** 
+
+```json
+{
+  "type": "TicTacToe",
+  "data": {
+    "board": "[[0,-1,-1],[1,0,0],[0,1,0]]", // 2D status of board with x being represented by 1's and o being represented by -1's
+    "whos_turn": "x", // "x", "o"
+    "status": "A1", // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o"
   }
 }
 ```

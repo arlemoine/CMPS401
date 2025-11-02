@@ -10,7 +10,8 @@ use serde::{Deserialize, Serialize};
 pub enum ClientMessage {
     Echo (EchoPayload),
     GameRoom (GameRoomPayload),
-    // TicTacToe (TicTacToePayload),
+    Chat (ChatPayload),
+    TicTacToe (TicTacToePayloadToServer),
 }
 
 /// Messages sent from the server to the client.
@@ -19,7 +20,8 @@ pub enum ClientMessage {
 pub enum ServerMessage { 
     Echo (EchoPayload),
     GameRoom (GameRoomPayload),
-    // TicTacToe (TicTacToePayload),
+    Chat (ChatPayload),
+    TicTacToe (TicTacToePayloadToClient),
 }
 
 // -------------------------------------------------------------
@@ -40,13 +42,26 @@ pub struct GameRoomPayload {
     pub game_id: String,
 }
 
-// /// Payload for TicTacToe game operations
-// #[derive(Clone, Serialize, Deserialize, Debug)]
-// pub struct TicTacToePayload {
-//     pub board: Vec<String>,
-//     pub turn: String,
-//     pub status: String,
-//     pub winner: String,
-//     pub player_x_id: String,
-//     pub player_o_id: Option<String>,
-// }
+/// Payload for GameRoom message type
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ChatPayload {
+    pub action: String, // "join" or "leave"
+    pub game_id: String,
+    pub player_name: String,
+    pub chat_message: String,
+}
+
+/// Payload for TicTacToe game operations
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TicTacToePayloadToClient {
+    pub board: Vec<String>,
+    pub whos_turn: String, // "x", "o"
+    pub status: String, // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o"
+}
+
+/// Payload for TicTacToe game operations
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct TicTacToePayloadToServer {
+    pub whos_turn: String, // "x", "o"
+    pub choice: String, // "A1"
+}
