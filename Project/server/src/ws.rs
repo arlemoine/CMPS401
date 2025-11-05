@@ -19,6 +19,7 @@ use crate::types::{
 use crate::routes::{
     echo::echo_handler,
     join_game::join_game,
+    chat::chat_handler,
 };
 
 #[axum::debug_handler]
@@ -72,8 +73,12 @@ async fn handle_client_message(
         }
         ClientMessage::GameRoom(payload) => {
             // Call the join/create game logic, get a response message
-            let response_msg = join_game(payload, state).await;
-            send_server_message(response_msg, tx).await;
+            let response = join_game(payload, state).await;
+            send_server_message(response, tx).await;
+        }
+        ClientMessage::Chat(payload) => {
+            let response = chat_handler(payload, state).await;
+            send_server_message(response, tx).await;
         }
         // You can add MovePiece, Chat, etc. here in the future
     }
