@@ -1,18 +1,16 @@
-use std::sync::Arc;
-use tokio::sync::{
-    RwLock,
-};
+use tokio::sync::mpsc::UnboundedSender;
+use axum::extract::ws::Message;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct GameState {
     pub game: String, // e.g. "chess", "checkers"
     pub state_data: serde_json::Value, // flexible per game type
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct GameRoom {
-    pub users: Arc<RwLock<Vec<String>>>,
-    pub chat_log: Arc<RwLock<Vec<String>>>,
-    pub game_state: Arc<RwLock<GameState>>,
-    // pub tx: broadcast::Sender<String>,  // per-room broadcast channel
+    pub users: Vec<String>,
+    pub txs: Vec<UnboundedSender<Message>>, // holds tranceivers for all members of game room to broadcast
+    pub chat_log: Vec<String>,
+    pub game_state: GameState,
 }

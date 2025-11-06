@@ -49,6 +49,7 @@ pub struct ChatPayload {
     pub game_id: String,
     pub player_name: String,
     pub chat_message: String,
+    pub time: String,
 }
 
 /// Payload for TicTacToe game operations

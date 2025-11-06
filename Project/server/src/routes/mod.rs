@@ -1,3 +1,3 @@
-pub mod chat;
-pub mod echo;
-pub mod join_game;
+pub mod chat_handler;
+pub mod echo_handler;
+pub mod gameroom_handler;
