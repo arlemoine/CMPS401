@@ -8,7 +8,6 @@ This document describes how to manually test your WebSocket backend using the `w
 - Install [`websocat`](https://github.com/vi/websocat):
   ```bash
   cargo install websocat
-````
 
 ## 2. Starting the backend
 
