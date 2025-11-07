@@ -40,13 +40,13 @@ websocat ws://localhost:3000/ws
 Send the following JSON in Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"action":"join","player_name":"Alice","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Alice","game_id":"room123"}}
 ```
 
 **Expected server response:**
 
 ```json
-{"type":"GameRoom","data":{"action":"join","player_name":"Alice","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Alice","game_id":"room123"}}
 ```
 
 ### 4.2 User B joins the same game room
@@ -54,7 +54,7 @@ Send the following JSON in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"GameRoom","data":{"action":"join","player_name":"Bob","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Bob","game_id":"room123"}}
 ```
 
 **Expected behavior:**
@@ -62,7 +62,7 @@ Send in Terminal 2:
 * Both terminals receive:
 
 ```json
-{"type":"GameRoom","data":{"action":"join","player_name":"Bob","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Bob","game_id":"room123"}}
 ```
 
 ### 4.3 User A sends a chat message
@@ -139,6 +139,94 @@ Send in any terminal:
 
 ```json
 {"invalid":"json"}
+```
+
+## 4.9 TicTacToe gameplay between two players
+
+#### 4.9.1 User A makes the first move
+
+Send in Terminal 1:
+
+```json
+{"type":"TicTacToe","data":{"whos_turn":"Alice","choice":"A1"}}
+```
+
+**Expected server response to both players:**
+
+```json
+{
+  "type":"TicTacToe",
+  "data":{
+    "board":["X","","","","","","","",""],
+    "whos_turn":"o",
+    "status":"next_o"
+  }
+}
+```
+
+#### 4.9.2 User B makes a move
+
+Send in Terminal 2:
+
+```json
+{"type":"TicTacToe","data":{"choice":"B2","game_id":"room123","player_name":"Bob"}}
+```
+
+**Expected server response:**
+
+```json
+{
+  "type":"TicTacToe",
+  "data":{
+    "board":["X","","","","O","","","",""],
+    "whos_turn":"x",
+    "status":"next_x"
+  }
+}
+```
+
+#### 4.9.3 Continue gameplay until game ends
+
+Players take turns sending moves:
+
+* Valid moves update the board and switch `whos_turn`.
+* Invalid moves (occupied cell or invalid choice) return:
+
+```json
+{
+  "type":"TicTacToe",
+  "data":{
+    "board":[...current board...],
+    "whos_turn":"x" or "o",
+    "status":"invalid_move"
+  }
+}
+```
+
+* When a player wins:
+
+```json
+{
+  "type":"TicTacToe",
+  "data":{
+    "board":[...final board...],
+    "whos_turn":"x" or "o",
+    "status":"gameover_x" or "gameover_o"
+  }
+}
+```
+
+* When the board is full and no winner:
+
+```json
+{
+  "type":"TicTacToe",
+  "data":{
+    "board":[...final board...],
+    "whos_turn":"x" or "o",
+    "status":"gameover_tie"
+  }
+}
 ```
 
 **Expected server response:**
