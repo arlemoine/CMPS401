@@ -6,62 +6,63 @@ import { useStore } from "../state/store";
 import { useNavigate } from "react-router-dom";
 
 export default function CreateJoin() {
-  const navigate = useNavigate();
-  const { displayName, setDisplayName, matchId, setMatchId } = useStore();
+    const navigate = useNavigate();
+  const { playerName, setPlayerName, gameId, setGameId } = useStore();
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
+
+  useEffect(() => {
+    ws.connect();
+  }, []);
 
   // Navigate when matchId is set by server response
-  useEffect(() => {
-    if (matchId) {
-      navigate(`/match/${matchId}`);
-    }
-  }, [matchId, navigate]);
+ useEffect(() => {
+    if (gameId) navigate(`/match/${gameId}`);
+  }, [gameId, navigate]);
 
-  // Reset loading states after timeout to prevent stuck buttons
-   useEffect(() => {
-    if (isCreating || isJoining) {
-      const timeout = setTimeout(() => {
-        setIsCreating(false);
-        setIsJoining(false);
-      }, 5000); // Reset after 5 seconds if no response
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [isCreating, isJoining]);
 
-  const onCreate = () => {
-    if (!displayName.trim()) {
-      setError("Please enter a display name");
+ 
+    const onCreate = () => {
+    if (!playerName.trim()) {
+      setError("Enter your name");
       return;
     }
     setError("");
     setIsCreating(true);
-    
-    // Reset any previous match state
-    setMatchId(null);
-    
-    ws.send({ type: "join", payload: { displayName: displayName.trim() } });
-    ws.send({ type: "create_match", payload: {} });
+
+    const newGameId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    setGameId(newGameId);
+
+    ws.send({
+      type: "GameRoom",
+      data: {
+        game: "tictactoe",
+        action: "join",
+        player_name: playerName,
+        game_id: newGameId,
+      },
+    });
   };
 
-  const onJoin = () => {
-    if (!joinCode.trim() || !displayName.trim()) {
-      setError("Please enter both display name and match code");
+   const onJoin = () => {
+    if (!joinCode.trim() || !playerName.trim()) {
+      setError("Enter both name and game code");
       return;
     }
-    setError("");
-    setIsJoining(true);
-    
-    const matchIdUpper = joinCode.trim().toUpperCase();
-    
-    // Reset any previous match state
-    setMatchId(null);
-    
-    ws.send({ type: "join", payload: { displayName: displayName.trim() } });
-    ws.send({ type: "join_match", payload: { matchId: matchIdUpper } });
+
+    const game_id = joinCode.toUpperCase();
+    setGameId(game_id);
+
+    ws.send({
+      type: "GameRoom",
+      data: {
+        game: "tictactoe",
+        action: "join",
+        player_name: playerName,
+        game_id,
+      },
+    });
   };
 
   return (
@@ -80,8 +81,8 @@ export default function CreateJoin() {
       <TextInput
         label="Display name"
         placeholder="Your name"
-        value={displayName}
-        onChange={(e) => setDisplayName(e.currentTarget.value)}
+        value={playerName}
+        onChange={(e) => setPlayerName(e.currentTarget.value)}
         required
       />
 
@@ -105,7 +106,6 @@ export default function CreateJoin() {
       <Group>
         <Button 
           onClick={onJoin}
-          loading={isJoining}
         >
           Join Match
         </Button>

@@ -1,49 +1,70 @@
-// client/src/state/store.ts
-import { create } from 'zustand';
-import type { Player } from '../api/ws';
+import { create } from "zustand";
+
+interface ChatMessage {
+  player_name: string;
+  chat_message: string;
+  time: string;
+}
 
 interface Store {
-  displayName: string;
-  setDisplayName: (name: string) => void;
-  
-  matchId: string | null;
-  setMatchId: (id: string | null) => void;
-  
-  players: Player[];
-  setPlayers: (players: Player[]) => void;
-  
-  matchStatus: string;
-  setMatchStatus: (status: string) => void;
-  
-  me: Player | null;
-  setMe: (player: Player | null) => void;
-  
-  board: (string | null)[];
-  setBoard: (board: (string | null)[]) => void;
-  
-  turn: string | null;
-  setTurn: (turn: string | null) => void;
+  playerName: string;
+  setPlayerName: (name: string) => void;
+
+  gameId: string | null;
+  setGameId: (id: string | null) => void;
+
+  players: string[]; // ✅ keeps track of all players in the room
+  addPlayer: (player: string) => void;
+  removePlayer: (player: string) => void;
+  setPlayers: (players: string[]) => void;
+
+  chatMessages: ChatMessage[];
+  addChatMessage: (msg: ChatMessage) => void;
+
+  board: number[][];
+  setBoard: (board: number[][]) => void;
+
+  whosTurn: string;
+  setWhosTurn: (turn: string) => void;
+
+  status: string;
+  setStatus: (status: string) => void;
 }
 
 export const useStore = create<Store>((set) => ({
-  displayName: '',
-  setDisplayName: (name) => set({ displayName: name }),
-  
-  matchId: null,
-  setMatchId: (id) => set({ matchId: id }),
-  
-  players: [],
+  playerName: "",
+  setPlayerName: (name) => set({ playerName: name }),
+
+  gameId: null,
+  setGameId: (id) => set({ gameId: id }),
+
+  players: [], // ✅ store both players
+  addPlayer: (player) =>
+    set((state) =>
+      state.players.includes(player)
+        ? state
+        : { players: [...state.players, player] }
+    ),
+  removePlayer: (player) =>
+    set((state) => ({
+      players: state.players.filter((p) => p !== player),
+    })),
   setPlayers: (players) => set({ players }),
-  
-  matchStatus: 'WAITING',
-  setMatchStatus: (status) => set({ matchStatus: status }),
-  
-  me: null,
-  setMe: (player) => set({ me: player }),
-  
-  board: Array(9).fill(null),
+
+  chatMessages: [],
+  addChatMessage: (msg) =>
+    set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
+
+  board: [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
   setBoard: (board) => set({ board }),
-  
-  turn: null,
-  setTurn: (turn) => set({ turn }),
+
+  whosTurn: "",
+  setWhosTurn: (turn) => set({ whosTurn: turn }),
+
+  status: "waiting",
+  setStatus: (status) => set({ status }),
 }));

@@ -1,6 +1,4 @@
 import React from "react";
-// import { signOut } from "firebase/auth";
-// import { auth } from "../firebase";
 import { Image, Card, SimpleGrid, Title, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 
@@ -40,11 +38,6 @@ const games = [
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
-//   const handleLogout = async () => {
-//     await signOut(auth);
-//     navigate("/login");
-//   };
-
   return (
     
       <div
@@ -64,8 +57,6 @@ const Dashboard: React.FC = () => {
     >
         <div style={{margin:"10px", display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%"}}>
         <Title order={2}  style={{margin:"10px"}}> 🎮 Welcome to Game Zone</Title>
-      {/* <Text mt="sm">You are logged in as {auth.currentUser?.email}</Text> */}
-      {/* <Button size="xs" onClick={handleLogout}>Logout</Button> */}
       </div>
 
       <SimpleGrid

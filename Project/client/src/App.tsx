@@ -1,105 +1,83 @@
 // client/src/App.tsx
-import { useEffect, useState, type JSX } from "react";
-import { Container, Title, Alert, Button, Group } from "@mantine/core";
-import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
-import { ws } from "./api/ws";
+import { useEffect, useState } from "react";
+import { Container, Title, Alert } from "@mantine/core";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import { ws, type ServerMsg } from "./api/ws";
 import { useStore } from "./state/store";
 import CreateJoin from "./pages/CreateJoin";
 import Match from "./pages/Match";
 import Board from "./pages/Board";
-import bg from "./assets/bg20.jpg";
-import { auth } from "./firebase"; // ✅ import firebase auth
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import Login from "./components/Login";
-import Signup from "./components/Signup";
 import Dashboard from "./components/Dashboard";
+import bg from "./assets/bg20.jpg";
 
-
-// ---------------------- PROTECTED ROUTES ----------------------
-function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const [user, setUser] = useState(auth.currentUser);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
-
-  if (loading) return <p style={{ color: "white", textAlign: "center" }}>Checking authentication...</p>;
-
-  return user ? children : <Navigate to="/login" />;
-}
-
-// ---------------------- APP ROUTES ----------------------
-function AppRoutes({ user }: { user: any }) {
+function AppRoutes() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
   const [status, setStatus] = useState<"connected" | "disconnected">("disconnected");
 
-  const { setMatchId, setPlayers, setMatchStatus, setMe, setBoard, setTurn } = useStore();
+  const {
+    setGameId,
+    setBoard,
+    setWhosTurn,
+    setStatus: setGameStatus,
+    setPlayerName,
+    addChatMessage,
+  } = useStore();
 
-  // 🔗 Connect to backend WS
+  // 🔗 WebSocket Connection Setup
   useEffect(() => {
     ws.connect();
 
     const offOpen = ws.onOpen(() => {
-      console.log("[WS] Connected");
+      console.log("[WS] Connected ✅");
       setStatus("connected");
     });
 
     const offClose = ws.onClose((code, reason) => {
-      console.log("[WS] Disconnected", code, reason);
+      console.warn("[WS] Disconnected ❌", code, reason);
       setStatus("disconnected");
     });
 
-    const offMsg = ws.onMessage((msg) => {
+    const offMsg = ws.onMessage((msg: ServerMsg) => {
+      console.log("[WS] Message received:", msg);
+
       switch (msg.type) {
-        case "hello":
-          console.log("[WS] Server version:", msg.payload.serverVersion);
+        // ✅ Echo (for testing)
+        case "Echo":
+          console.log("[WS] Echo:", msg.data.message);
           break;
 
-        case "match_created": {
-          const { matchId, you } = msg.payload;
-          setMatchId(matchId);
-          setMe(you);
-          console.log("[App] Match created, navigating to:", matchId);
-          navigate(`/match/${matchId}`);
-          break;
-        }
-
-        case "joined_match": {
-          const { matchId, you } = msg.payload;
-          setMatchId(matchId);
-          setMe(you);
-          console.log("[App] Joined match, navigating to:", matchId);
-          navigate(`/match/${matchId}`);
-          break;
-        }
-
-        case "state_update": {
-          const { matchId, players, status, board, turn } = msg.payload;
-          console.log("[App] State update:", { matchId, status, players: players.length });
-
-          setMatchId(matchId);
-          setPlayers(players);
-          setMatchStatus(status);
-          setBoard(board || Array(9).fill(null));
-          setTurn(turn);
-
-          if (status === "IN_PROGRESS" && window.location.pathname.includes("/match/")) {
-            console.log("[App] Game started, navigating to board");
-            navigate(`/board/${matchId}`);
+        // ✅ GameRoom events
+        case "GameRoom": {
+          const { game_id, action, player_name } = msg.data;
+          if (action === "join") {
+            setGameId(game_id);
+            setPlayerName(player_name);
+            console.log(`[GameRoom] Joined game ${game_id} as ${player_name}`);
+            navigate(`/match/${game_id}`);
           }
           break;
         }
 
-        case "error":
-          console.warn("[WS] Server error", msg.payload);
-          setError(`${msg.payload.code}: ${msg.payload.message}`);
-          setTimeout(() => setError(""), 5000);
+        // ✅ TicTacToe state updates
+        case "TicTacToe": {
+          const { board, whos_turn, status } = msg.data;
+          console.log("[TicTacToe] Game update:", msg.data);
+          setBoard(board);
+          setWhosTurn(whos_turn);
+          setGameStatus(status);
+          break;
+        }
+
+        // ✅ Chat messages
+        case "Chat": {
+          addChatMessage(msg.data);
+          break;
+        }
+
+        // ⚠️ Unknown type
+        default:
+          console.warn("[WS] Unknown message type:", msg);
           break;
       }
     });
@@ -109,25 +87,27 @@ function AppRoutes({ user }: { user: any }) {
       offClose();
       offMsg();
     };
-  }, [navigate, setMatchId, setPlayers, setMatchStatus, setMe, setBoard, setTurn]);
+  }, [navigate, setGameId, setBoard, setWhosTurn, setGameStatus, setPlayerName, addChatMessage]);
 
   return (
     <>
       {error && <Alert color="red" mb="md">{error}</Alert>}
-      {status === "disconnected" && <Alert color="yellow" mb="md">Connecting to server...</Alert>}
+      {status === "disconnected" && (
+        <Alert color="yellow" mb="md">
+          Connecting to server...
+        </Alert>
+      )}
 
       <Routes>
-        {/* 🧭 Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+        {/* 🧭 Default route */}
+        <Route path="/" element={<Dashboard />} />
 
-        {/* 🧭 Protected Game Routes */}
-        <Route path="/createjoin" element={<ProtectedRoute><CreateJoin /></ProtectedRoute>} />
-        <Route path="/match/:id" element={<ProtectedRoute><Match /></ProtectedRoute>} />
-        <Route path="/board/:id" element={<ProtectedRoute><Board /></ProtectedRoute>} />
+        {/* 🧭 Game Routes */}
+        <Route path="/createjoin" element={<CreateJoin />} />
+        <Route path="/match/:id" element={<Match />} />
+        <Route path="/board/:id" element={<Board />} />
 
-        {/* Default fallback */}
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
@@ -137,16 +117,6 @@ function AppRoutes({ user }: { user: any }) {
 // ---------------------- APP WRAPPER ----------------------
 export default function App() {
   const basename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-  const [user, setUser] = useState(auth.currentUser);
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return unsub;
-  }, []);
-
-   const handleLogout = async () => {
-      await signOut(auth); 
-  };
-   const showLogout = !["/", "/login", "/signup"].includes(location.pathname);
 
   return (
     <BrowserRouter basename={basename}>
@@ -166,48 +136,24 @@ export default function App() {
         }}
       >
         <Container size="lg" style={{ width: "100%" }}>
-          <div style={{
-            width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0.75rem 2rem",
-    borderRadius: "8px",
-    marginBottom: "1.5rem",
-            }}>
-          <Title order={2} ta="center" mb="lg">
-            Multiplayer-Game Prototype
-          </Title>
-
-          {user && (
-              <Button
-                variant="filled"
-                color="red"
-                size="xs"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
-            )}
+          <div
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.75rem 2rem",
+              borderRadius: "8px",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <Title order={2} ta="center" mb="lg">
+              Multiplayer-Game Prototype
+            </Title>
           </div>
 
-          {/* Show logout if logged in
-          {user && (
-            <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-              <span>Signed in as {user.email}</span>
-              <Button
-                variant="light"
-                color="red"
-                size="xs"
-                ml="sm"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
-            </div>
-          )} */}
-         <Container size="lg" style={{width:"80%"}}>
-          <AppRoutes user={user} />
+          <Container size="lg" style={{ width: "80%" }}>
+            <AppRoutes />
           </Container>
         </Container>
       </div>
