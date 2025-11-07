@@ -46,7 +46,6 @@ pub struct GameRoomPayload {
 /// Payload for GameRoom message type
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ChatPayload {
-    pub action: String, // "join" or "leave"
     pub game_id: String,
     pub player_name: String,
     pub chat_message: String,

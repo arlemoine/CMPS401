@@ -47,9 +47,10 @@ Handles operations related to joining or leaving a game room. To join a room, us
 {
   "type": "GameRoom",
   "data": {
-    "action": "join", // "join", "leave", "reset"
+    "game":"tictactoe",
+    "action": "join", // "join", "leave", "reset", note that "reset" is not yet implemented
     "player_name": "John",
-    "game_id": "HQCU",
+    "game_id": "HQCU", 
   }
 }
 ```
@@ -58,16 +59,30 @@ Handles operations related to joining or leaving a game room. To join a room, us
 
 Handles operations related to sending and receiving chat messages in a given game room. The frontend utilizes the "send" keyword for the action while the backend broadcasts to everyone in the game room via the "broadcast" keyword.
 
-**Example:** 
+**Example (Client -> Server):** 
 
 ```json
 {
   "type": "Chat",
   "data": {
-    "action": "send", // "send" or "broadcast"
     "game_id": "HQCU", // Specifies game room related to the chat
-    "player_name": "John", // Specifies who sent the message
+    "player_name": "John", // Specifies who is sending the message
     "chat_message": "Good game!", // Contents of the chat message
+    "time": "" // This is left blank for a client-to-server message and then timestamped on the server side
+  }
+}
+```
+
+**Example (Server -> Client):** 
+
+```json
+{
+  "type": "Chat",
+  "data": {
+    "game_id": "HQCU", // Specifies game room related to the chat
+    "player_name": "John", // Specifies who message originated from
+    "chat_message": "Good game!", // Contents of the chat message
+    "time": "11:57 AM" // This is generated automatically via timestamp on server and sent back to frontend during broadcast to all in game room
   }
 }
 ```
@@ -82,7 +97,7 @@ Handles operations related to the game state and actions of the game TicTacToe. 
 {
   "type": "TicTacToe",
   "data": {
-    "whos_turn": "x", // "x", "o"
+    "whos_turn": "John", /// player_name of person who is attempting to make a move
     "choice": "A1", // Convention is A1 to C3 where letter = row and number = column
   }
 }
@@ -95,8 +110,8 @@ Handles operations related to the game state and actions of the game TicTacToe. 
   "type": "TicTacToe",
   "data": {
     "board": "[[0,-1,-1],[1,0,0],[0,1,0]]", // 2D status of board with x being represented by 1's and o being represented by -1's
-    "whos_turn": "x", // "x", "o"
-    "status": "A1", // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o"
+    "whos_turn": "John", // player_name of person whose turn it currently is
+    "status": "A1", // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o", "invalid_move", "invalid_player"
   }
 }
 ```
