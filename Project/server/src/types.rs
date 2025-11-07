@@ -37,6 +37,7 @@ pub struct EchoPayload {
 /// Payload for GameRoom message type
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GameRoomPayload {
+    pub game: String, // "tictactoe", etc
     pub action: String, // "join" or "leave"
     pub player_name: String,
     pub game_id: String,
@@ -56,7 +57,7 @@ pub struct ChatPayload {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TicTacToePayloadToClient {
     pub board: Vec<String>,
-    pub whos_turn: String, // "x", "o"
+    pub whos_turn: String, // "x", "o", "n/a"
     pub status: String, // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o"
 }
 

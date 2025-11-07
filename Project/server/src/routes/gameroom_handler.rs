@@ -2,11 +2,12 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use axum::extract::ws::Message;
 
-use crate::types::{
+use crate::models::{
     appstate::AppState,
-    gameroom::GameRoom,
-    types::{GameRoomPayload, ServerMessage},
+    gameroom::{GameRoom, GameType},
+    tictactoe::model::TicTacToeModel,
 };
+use crate::types::{GameRoomPayload, ServerMessage};
 
 /// Handles join/leave operations for game rooms.
 pub async fn gameroom_handler(
@@ -26,25 +27,42 @@ pub async fn gameroom_handler(
 }
 
 /// A user joins a room
-async fn handle_join(
+pub async fn handle_join(
     payload: GameRoomPayload,
     state: &Arc<AppState>,
     user_tx: UnboundedSender<Message>,
 ) -> ServerMessage {
     let mut rooms = state.rooms.write().await;
 
-    let room = rooms.entry(payload.game_id.clone()).or_insert_with(GameRoom::default);
+    // Match the requested game type and create the appropriate GameType
+    let game_type = match payload.game.as_str() {
+        "tictactoe" => GameType::TicTacToe(TicTacToeModel::new()),
+        // Add other games here as needed:
+        // "chess" => GameType::Chess(ChessModel::new()),
+        // "checkers" => GameType::Checkers(CheckersModel::new()),
+        other => {
+            eprintln!("Unknown game type requested: {}", other);
+            // Fallback: just return the payload without creating a room
+            return ServerMessage::GameRoom(payload);
+        }
+    };
+
+    // Insert new room if it doesn't exist
+    let room = rooms
+        .entry(payload.game_id.clone())
+        .or_insert_with(|| GameRoom::new(game_type));
 
     // Add player if not already present
     if !room.users.contains(&payload.player_name) {
         room.users.push(payload.player_name.clone());
     }
 
-    // Add the sender for broadcast
+    // Add the sender for broadcasting messages
     room.txs.push(user_tx);
 
     ServerMessage::GameRoom(payload)
 }
+
 
 /// A user leaves a room
 async fn handle_leave(

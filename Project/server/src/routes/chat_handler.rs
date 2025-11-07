@@ -1,7 +1,8 @@
 use chrono::Local;
 use std::sync::Arc;
 
-use crate::types::{appstate::AppState, types::{ChatPayload, ServerMessage}};
+use crate::models::appstate::AppState;
+use crate::types::{ChatPayload, ServerMessage};
 
 fn get_timestamp() -> String {
     Local::now().format("%I:%M %p").to_string()

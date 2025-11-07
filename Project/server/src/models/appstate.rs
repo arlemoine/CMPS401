@@ -1,7 +1,7 @@
 use tokio::sync::RwLock;
 use std::collections::HashMap;
 
-use crate::types::gameroom::GameRoom;
+use crate::models::gameroom::GameRoom;
 
 // Holds state of the application backend
 #[derive(Default)]

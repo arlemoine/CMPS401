@@ -1,3 +1,3 @@
 pub mod appstate;
 pub mod gameroom;
-pub mod types;
+pub mod tictactoe;

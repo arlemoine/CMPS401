@@ -9,10 +9,9 @@ use futures::{StreamExt, SinkExt};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-use crate::types::{
-    appstate::AppState,
-    types::{ClientMessage, EchoPayload, ServerMessage},
-};
+use crate::models::appstate::AppState;
+use crate::types::{ClientMessage, EchoPayload, ServerMessage};
+
 use crate::routes::{
     echo_handler::echo_handler,
     gameroom_handler::gameroom_handler,
