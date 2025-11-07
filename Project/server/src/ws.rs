@@ -7,9 +7,9 @@ use axum::{
 };
 use futures::{StreamExt, SinkExt};
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock};
 
-use crate::models::appstate::AppState;
+use crate::{models::appstate::AppState, routes::tictactoe_handler::tictactoe_handler};
 use crate::types::{ClientMessage, EchoPayload, ServerMessage};
 
 use crate::routes::{
@@ -33,26 +33,29 @@ fn parse_client_message(text: &str) -> Result<ClientMessage, String> {
 }
 
 /// Broadcast to all clients in room
-async fn broadcast_to_room(msg: ServerMessage, state: &Arc<AppState>) {
-    // Determine game_id
-    let game_id = match &msg {
-        ServerMessage::GameRoom(payload) => &payload.game_id,
-        ServerMessage::Chat(payload) => &payload.game_id,
-        _ => return,
+async fn broadcast_to_room(
+    msg: ServerMessage,
+    app_state: &Arc<AppState>,
+    current_room: &Arc<RwLock<Option<String>>>
+) {
+    let game_id = {
+        let guard = current_room.read().await;
+        guard.clone()
     };
 
-    let mut rooms = state.rooms.write().await;
+    let Some(game_id) = game_id else { return; };
 
-    if let Some(room) = rooms.get_mut(game_id) {
+    let mut rooms = app_state.rooms.write().await;
+
+    if let Some(room) = rooms.get_mut(&game_id) {
         let serialized = serde_json::to_string(&msg).unwrap();
-
-        // Remove any senders that fail
         room.txs.retain(|tx| tx.send(Message::Text(serialized.clone().into())).is_ok());
     }
 }
 
+
 /// Handle the WebSocket connection
-pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
+pub async fn handle_socket(socket: WebSocket, app_state: Arc<AppState>) {
     // Create a channel to send messages TO this client
     let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
 
@@ -69,6 +72,9 @@ pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         }
     });
 
+    // Track current gameroom of client
+    let current_room = Arc::new(RwLock::new(None::<String>));
+
     // Main loop: read client messages
     while let Some(Ok(msg)) = ws_rx.next().await {
         if let Message::Text(text) = msg {
@@ -77,19 +83,33 @@ pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             match parsed {
                 Ok(client_msg) => match client_msg {
                     ClientMessage::GameRoom(payload) => {
-                        let response = gameroom_handler(payload, &state, tx_for_state.clone()).await;
-                        broadcast_to_room(response, &state).await;
+                        let response = gameroom_handler(payload, &app_state, tx_for_state.clone(), current_room.clone()).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
                     }
                     ClientMessage::Echo(payload) => {
-                        let response = echo_handler(payload, &state);
+                        let response = echo_handler(payload, &app_state);
                         let serialized = serde_json::to_string(&response).unwrap();
                         let _ = tx_for_state.send(Message::Text(serialized.into()));
                     }
                     ClientMessage::Chat(payload) => {
-                        let response = chat_handler(payload, &state).await;
-                        broadcast_to_room(response, &state).await;
+                        let response = chat_handler(payload, &app_state).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
                     }
-                    _ => {}
+                    ClientMessage::TicTacToe(payload) => {
+                        let response = tictactoe_handler(payload, &app_state, current_room.clone()).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
+                    }
+                    other_variant => {
+                        let err = format!(
+                            "No route defined for message type: {:?}",
+                            other_variant
+                        );
+                        let error_payload =
+                            ServerMessage::Echo(EchoPayload { message: err });
+
+                        let serialized = serde_json::to_string(&error_payload).unwrap();
+                        let _ = tx_for_state.send(Message::Text(serialized.into()));
+                    }
                 },
 
                 Err(err_str) => {
@@ -102,12 +122,12 @@ pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     }
 
     // On disconnect: remove tx from any room it belonged to
-    cleanup_sender(&state, &tx_for_state).await;
+    cleanup_sender(&app_state, &tx_for_state).await;
 }
 
 /// Remove tx from all rooms when client disconnects
-async fn cleanup_sender(state: &Arc<AppState>, tx: &mpsc::UnboundedSender<Message>) {
-    let mut rooms = state.rooms.write().await;
+async fn cleanup_sender(app_state: &Arc<AppState>, tx: &mpsc::UnboundedSender<Message>) {
+    let mut rooms = app_state.rooms.write().await;
 
     for room in rooms.values_mut() {
         room.txs.retain(|t| !t.same_channel(tx));

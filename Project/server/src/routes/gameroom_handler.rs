@@ -1,5 +1,8 @@
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{
+    mpsc::UnboundedSender,
+    RwLock,
+};
 use axum::extract::ws::Message;
 
 use crate::models::{
@@ -14,9 +17,10 @@ pub async fn gameroom_handler(
     payload: GameRoomPayload,
     state: &Arc<AppState>,
     user_tx: UnboundedSender<Message>,
+    current_room: Arc<RwLock<Option<String>>>,
 ) -> ServerMessage {
     match payload.action.as_str() {
-        "join" => handle_join(payload, state, user_tx).await,
+        "join" => handle_join(payload, state, user_tx, current_room).await,
         "leave" => handle_leave(payload, state, user_tx).await,
         _ => {
             let mut invalid = payload.clone();
@@ -31,6 +35,7 @@ pub async fn handle_join(
     payload: GameRoomPayload,
     state: &Arc<AppState>,
     user_tx: UnboundedSender<Message>,
+    current_room: Arc<RwLock<Option<String>>>,
 ) -> ServerMessage {
     let mut rooms = state.rooms.write().await;
 
@@ -48,14 +53,18 @@ pub async fn handle_join(
     };
 
     // Insert new room if it doesn't exist
-    let room = rooms
-        .entry(payload.game_id.clone())
-        .or_insert_with(|| GameRoom::new(game_type));
+    let room = rooms.entry(payload.game_id.clone())
+        .or_insert_with(|| GameRoom::new(
+            payload.game_id.clone(),
+            game_type 
+        ));
 
     // Add player if not already present
     if !room.users.contains(&payload.player_name) {
         room.users.push(payload.player_name.clone());
     }
+    let mut room_guard = current_room.write().await;
+    *room_guard = Some(payload.game_id.clone());
 
     // Add the sender for broadcasting messages
     room.txs.push(user_tx);
