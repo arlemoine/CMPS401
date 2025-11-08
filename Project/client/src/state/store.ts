@@ -20,6 +20,8 @@ interface Store {
 
   chatMessages: ChatMessage[];
   addChatMessage: (msg: ChatMessage) => void;
+  clearChatMessages: () => void;
+  
 
   board: number[][];
   setBoard: (board: number[][]) => void;
@@ -32,8 +34,13 @@ interface Store {
 }
 
 export const useStore = create<Store>((set) => ({
-  playerName: "",
-  setPlayerName: (name) => set({ playerName: name }),
+  playerName: sessionStorage.getItem("ttt_playerName") || "",
+  setPlayerName: (name) => {
+    // ✅ Save to sessionStorage so each tab maintains its own identity
+    sessionStorage.setItem("ttt_playerName", name);
+    set({ playerName: name });
+  },
+
 
   gameId: null,
   setGameId: (id) => set({ gameId: id }),
@@ -54,6 +61,7 @@ export const useStore = create<Store>((set) => ({
   chatMessages: [],
   addChatMessage: (msg) =>
     set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
+  clearChatMessages: () => set({ chatMessages: [] }), 
 
   board: [
     [0, 0, 0],

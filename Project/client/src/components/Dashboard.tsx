@@ -1,6 +1,8 @@
 import React from "react";
 import { Image, Card, SimpleGrid, Title, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "../state/store";
+import { ws } from "../api/ws";
 
 const games = [
   {
@@ -37,17 +39,46 @@ const games = [
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { setGameId, setPlayerName, setPlayers, setBoard, setStatus, setWhosTurn } = useStore();
+
+  // ✅ Handle game click with proper cleanup
+  const handleGameClick = (path: string, gameName: string) => {
+    console.log(`[Dashboard] Starting ${gameName}`);
+
+    // ✅ Only cleanup for Tic Tac Toe (the active game)
+    if (gameName === "Tic Tac Toe") {
+      // Clear all game state
+      setGameId(null);
+      setPlayerName("");
+      setPlayers([]);
+      setBoard([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+      ]);
+      setStatus("waiting");
+      setWhosTurn("");
+
+      // Clear sessionStorage
+      sessionStorage.removeItem("ttt_playerName");
+
+      // Close any existing WebSocket connection
+      ws.close();
+
+      console.log("[Dashboard] State cleared, navigating to CreateJoin");
+    }
+
+    // Navigate to the game
+    navigate(path);
+  };
 
   return (
-    
-      <div
+    <div
       style={{
         minHeight: "80vh",
         paddingLeft: "40px",
-        paddingRight:"40px",
-        paddingTop:"10px",
-        // background:
-        //   "linear-gradient(135deg, rgba(30,30,60,1) 0%, rgba(50,50,80,1) 100%)",
+        paddingRight: "40px",
+        paddingTop: "10px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -55,8 +86,18 @@ const Dashboard: React.FC = () => {
         marginTop: "1rem",
       }}
     >
-        <div style={{margin:"10px", display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%"}}>
-        <Title order={2}  style={{margin:"10px"}}> 🎮 Welcome to Game Zone</Title>
+      <div
+        style={{
+          margin: "10px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <Title order={2} style={{ margin: "10px" }}>
+          🎮 Welcome to Game Zone
+        </Title>
       </div>
 
       <SimpleGrid
@@ -75,14 +116,14 @@ const Dashboard: React.FC = () => {
               backgroundColor: "rgba(255,255,255,0.1)",
               transition: "transform 0.25s ease, box-shadow 0.25s ease",
             }}
-            onClick={() => navigate(game.path)}
+            onClick={() => handleGameClick(game.path, game.name)}
             onMouseEnter={(e) => {
-              (e.currentTarget.style.transform = "scale(1.05)");
-              (e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.4)");
+              e.currentTarget.style.transform = "scale(1.05)";
+              e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.4)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget.style.transform = "scale(1)");
-              (e.currentTarget.style.boxShadow = "none");
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             <Image
@@ -100,7 +141,6 @@ const Dashboard: React.FC = () => {
         ))}
       </SimpleGrid>
     </div>
-
   );
 };
 

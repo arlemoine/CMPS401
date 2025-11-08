@@ -1,5 +1,4 @@
-// client/src/components/Chatbox.tsx
-import { useState, useEffect} from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   TextInput,
@@ -12,27 +11,33 @@ import {
   Group,
 } from "@mantine/core";
 import { ws } from "../api/ws";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X, SendHorizonal } from "lucide-react";
 import { useStore } from "../state/store";
 
 export default function ChatBox() {
-   const { playerName, gameId, chatMessages, addChatMessage } = useStore();
+  const { playerName, gameId, chatMessages, addChatMessage } = useStore();
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const viewport = useRef<HTMLDivElement>(null);
 
-  // ✅ Handle incoming chat messages matching backend structure
+  // ✅ Handle incoming messages
+//   useEffect(() => {
+//     ws.connect();
+//     const unsub = ws.onMessage((msg) => {
+//       if (msg.type === "Chat") addChatMessage(msg.data);
+//     });
+//     return () => unsub();
+//   }, [addChatMessage]);
+
+  // ✅ Auto-scroll to bottom when new messages appear
   useEffect(() => {
-       ws.connect();
-    const unsub = ws.onMessage((msg) => {
-      if (msg.type === "Chat") {
-        addChatMessage(msg.data);
-      }
+    viewport.current?.scrollTo({
+      top: viewport.current.scrollHeight,
+      behavior: "smooth",
     });
+  }, [chatMessages]);
 
-    return () => unsub();
-  }, [addChatMessage]);
-
-    const sendChat = () => {
+  const sendChat = () => {
     if (!message.trim() || !gameId) return;
     ws.send({
       type: "Chat",
@@ -40,10 +45,17 @@ export default function ChatBox() {
         game_id: gameId,
         player_name: playerName,
         chat_message: message,
-        time: "",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     });
     setMessage("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendChat();
+    }
   };
 
   return (
@@ -51,8 +63,8 @@ export default function ChatBox() {
       {/* Floating toggle button */}
       <ActionIcon
         pos="fixed"
-        bottom={20}
-        right={20}
+        bottom={24}
+        right={24}
         size="xl"
         radius="xl"
         variant="filled"
@@ -60,7 +72,7 @@ export default function ChatBox() {
         onClick={() => setIsOpen((o) => !o)}
         style={{
           zIndex: 2000,
-          boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+          boxShadow: "0 6px 12px rgba(0,0,0,0.25)",
           transition: "transform 0.3s ease",
           transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
         }}
@@ -68,7 +80,7 @@ export default function ChatBox() {
         {isOpen ? <X /> : <MessageSquare />}
       </ActionIcon>
 
-      {/* Slide & stretch chat panel */}
+      {/* Slide chat panel */}
       <Transition mounted={isOpen} transition="slide-left" duration={400} timingFunction="ease">
         {(styles) => (
           <Paper
@@ -78,57 +90,107 @@ export default function ChatBox() {
             style={{
               ...styles,
               position: "fixed",
-              right: isOpen ? 0 : "-350px",
+              right: 0,
               bottom: 0,
               zIndex: 1500,
               display: "flex",
               flexDirection: "column",
-              backgroundColor: "#c07f25ff",
+              width: 320,
+              height: 500,
+              background: "rgba(255, 255, 255, 0.25)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.3)",
               borderTopLeftRadius: "1rem",
               borderTopRightRadius: "1rem",
-              boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
-              transition: "right 0.4s ease, transform 0.4s ease",
-              transform: isOpen ? "translateY(0)" : "translateY(100%)",
-              width: "300px",
-              height: "480px",
-              resize: "both",
-              overflow: "auto",
-              minWidth: "260px",
-              minHeight: "280px",
-              maxWidth: "600px",
-              maxHeight: "600px",
+              boxShadow: "0 -6px 24px rgba(0,0,0,0.3)",
             }}
           >
             {/* Header */}
             <Group justify="space-between" mb="xs">
               <Text fw={700} size="lg" color="blue">
-                Game Chat
+                💬 Game Chat
               </Text>
-              <ActionIcon color="black" variant="light" onClick={() => setIsOpen(false)}>
+              <ActionIcon color="dark" variant="light" onClick={() => setIsOpen(false)}>
                 <X size={18} />
               </ActionIcon>
             </Group>
 
-            {/* Message area */}
-            <ScrollArea h={200} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "8px" }}>
-        {chatMessages.map((c, i) => (
-          <Text key={i}>
-            <strong>{c.player_name}:</strong> {c.chat_message} <em>{c.time}</em>
-          </Text>
-        ))}
-      </ScrollArea>
+            {/* Messages */}
+            <ScrollArea
+              viewportRef={viewport}
+              h={360}
+              offsetScrollbars
+              style={{
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "8px",
+                padding: "8px",
+                backgroundColor: "rgba(255,255,255,0.05)",
+              }}
+            >
+              {chatMessages.length === 0 && (
+                <Text ta="center" c="dimmed" mt="sm">
+                  No messages yet. Start chatting! ✨
+                </Text>
+              )}
 
-            {/* Input box */}
-            <Box mt="xs" style={{ display: "flex", gap: 8 }}>
+              {chatMessages.map((c, i) => {
+                const isSelf = c.player_name === playerName;
+                return (
+                  <Box
+                    key={i}
+                    style={{
+                      display: "flex",
+                      justifyContent: isSelf ? "flex-end" : "flex-start",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Box
+                      style={{
+                        backgroundColor: isSelf ? "#228be6" : "#e9ecef",
+                        color: isSelf ? "white" : "black",
+                        padding: "8px 12px",
+                        borderRadius: "12px",
+                        maxWidth: "80%",
+                        wordWrap: "break-word",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      <Text fw={600} size="sm">
+                        {isSelf ? "You" : c.player_name}
+                      </Text>
+                      <Text size="sm">{c.chat_message}</Text>
+                      <Text size="xs" c={isSelf ? "gray.1" : "gray.6"} mt={2}>
+                        {c.time}
+                      </Text>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </ScrollArea>
+
+            {/* Input */}
+            <Box mt="sm" style={{ display: "flex", gap: 8 }}>
               <TextInput
                 placeholder="Type a message..."
                 value={message}
                 onChange={(e) => setMessage(e.currentTarget.value)}
-                style={{ flex: 1 }}
+                onKeyDown={handleKeyDown}
+                style={{
+                  flex: 1,
+                  background: "rgba(255,255,255,0.3)",
+                  borderRadius: "8px",
+                }}
               />
-              <Button onClick={sendChat} radius="md">
-                Send
-              </Button>
+              <ActionIcon
+                onClick={sendChat}
+                size="lg"
+                radius="md"
+                color="blue"
+                variant="filled"
+                disabled={!message.trim()}
+              >
+                <SendHorizonal size={18} />
+              </ActionIcon>
             </Box>
           </Paper>
         )}

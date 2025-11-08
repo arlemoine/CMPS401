@@ -17,6 +17,8 @@ pub struct TicTacToeModel {
     pub board: [[i8; 3]; 3],
     pub whos_turn: Player,
     pub winner: GameWinner,
+    pub player1_name: Option<String>, // ✅ ADDED: Track player 1's actual name
+    pub player2_name: Option<String>, // ✅ ADDED: Track player 2's actual name
 }
 
 impl TicTacToeModel {
@@ -25,8 +27,51 @@ impl TicTacToeModel {
             board: [[0; 3]; 3],
             whos_turn: Player::Player1,
             winner: GameWinner::Pending,
+            player1_name: None, // ✅ ADDED
+            player2_name: None, // ✅ ADDED
         }
     }
+
+pub fn assign_player(&mut self, player_name: String) -> Option<Player> {
+        if self.player1_name.is_none() {
+            self.player1_name = Some(player_name);
+            Some(Player::Player1)
+        } else if self.player2_name.is_none() {
+            self.player2_name = Some(player_name);
+            Some(Player::Player2)
+        } else {
+            None // Room is full
+        }
+    }
+
+    // ✅ ADDED: Get player enum from name
+    pub fn get_player_from_name(&self, player_name: &str) -> Option<Player> {
+        if self.player1_name.as_deref() == Some(player_name) {
+            Some(Player::Player1)
+        } else if self.player2_name.as_deref() == Some(player_name) {
+            Some(Player::Player2)
+        } else {
+            None
+        }
+    }
+
+    // ✅ ADDED: Get name of current turn player
+    pub fn current_player_name(&self) -> Option<&str> {
+        match self.whos_turn {
+            Player::Player1 => self.player1_name.as_deref(),
+            Player::Player2 => self.player2_name.as_deref(),
+        }
+    }
+
+    // ✅ ADDED: Get winner's name
+    pub fn winner_name(&self) -> Option<&str> {
+        match self.winner {
+            GameWinner::Player1 => self.player1_name.as_deref(),
+            GameWinner::Player2 => self.player2_name.as_deref(),
+            _ => None,
+        }
+    }
+
 
     // Validate that the move is allowed
     pub fn validate_choice(&self, row: usize, col: usize) -> bool {

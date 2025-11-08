@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
 use crate::types::{ServerMessage, TicTacToePayloadToClient, TicTacToePayloadToServer};
 use crate::models::gameroom::{GameRoom, GameType};
 use crate::models::tictactoe::model::{TicTacToeModel, Player, GameWinner};
@@ -12,30 +11,19 @@ pub async fn tictactoe_handler(
     app_state: &Arc<AppState>,
     current_room: Arc<RwLock<Option<String>>>,
 ) -> ServerMessage {
-    // Which room is this socket in?
-    let game_id = {
-        let guard = current_room.read().await;
-        match &*guard {
-            Some(id) => id.clone(),
-            None => {
-                return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-                    board: vec!["".to_string(); 9],
-                    whos_turn: "n/a".to_string(),
-                    status: "no_room".to_string(),
-                });
-            }
-        }
-    };
-
+    // ✅ FIXED: Use game_id from payload instead of current_room
+    let game_id = payload.game_id.clone();
+    
     // Get a mutable handle to the rooms map, then the room
     let mut rooms = app_state.rooms.write().await;
     let room = match rooms.get_mut(&game_id) {
         Some(r) => r,
         None => {
+            eprintln!("[TicTacToe] Room not found: {}", game_id);
             return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-                board: vec!["".to_string(); 9],
-                whos_turn: "n/a".to_string(),
-                status: "room_not_found".to_string(),
+                board: Some(vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]),
+                whos_turn: Some("".to_string()),
+                status: Some("room_not_found".to_string()),
             });
         }
     };
@@ -46,32 +34,41 @@ pub async fn tictactoe_handler(
         _ => {
             eprintln!("Tried to play TicTacToe in a non-TicTacToe room: {}", game_id);
             return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-                board: vec!["".to_string(); 9],
-                whos_turn: "n/a".to_string(),
-                status: "wrong_game_type".to_string(),
+                board: Some(vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]),
+                whos_turn: Some("".to_string()),
+                status: Some("wrong_game_type".to_string()),
             });
         }
     };
 
+    // ✅ FIXED: Assign players if not yet assigned
+    if game.player1_name.is_none() && !room.users.is_empty() {
+        game.player1_name = Some(room.users[0].clone());
+    }
+    if game.player2_name.is_none() && room.users.len() > 1 {
+        game.player2_name = Some(room.users[1].clone());
+    }
+
     // Determine which Player this move is from
-    let player = if room.users.get(0) == Some(&payload.whos_turn) {
-        Player::Player1
-    } else if room.users.get(1) == Some(&payload.whos_turn) {
-        Player::Player2
-    } else {
-        return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-            board: serialize_board(game),
-            whos_turn: format_player(game.whos_turn.clone()),
-            status: "unknown_player".to_string(),
-        });
+    let player = match game.get_player_from_name(&payload.whos_turn) {
+        Some(p) => p,
+        None => {
+            eprintln!("[TicTacToe] Unknown player: {}", payload.whos_turn);
+            return ServerMessage::TicTacToe(TicTacToePayloadToClient {
+                board: Some(serialize_board_as_numbers(game)),
+                whos_turn: game.current_player_name().map(|s| s.to_string()),
+                status: Some("unknown_player".to_string()),
+            });
+        }
     };
 
     // Check if it's actually this player's turn
     if player != game.whos_turn {
+        eprintln!("[TicTacToe] Not {}'s turn", payload.whos_turn);
         return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-            board: serialize_board(game),
-            whos_turn: format_player(game.whos_turn.clone()),
-            status: "not_your_turn".to_string(),
+            board: Some(serialize_board_as_numbers(game)),
+            whos_turn: game.current_player_name().map(|s| s.to_string()),
+            status: Some("not_your_turn".to_string()),
         });
     }
 
@@ -79,68 +76,62 @@ pub async fn tictactoe_handler(
     let (row, col) = match parse_choice(&payload.choice) {
         Some(rc) => rc,
         None => {
+            eprintln!("[TicTacToe] Invalid choice: {}", payload.choice);
             return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-                board: serialize_board(game),
-                whos_turn: format_player(game.whos_turn.clone()),
-                status: "invalid_choice".to_string(),
+                board: Some(serialize_board_as_numbers(game)),
+                whos_turn: game.current_player_name().map(|s| s.to_string()),
+                status: Some("invalid_choice".to_string()),
             });
         }
     };
 
     if !game.validate_choice(row, col) {
+        eprintln!("[TicTacToe] Invalid move at ({}, {})", row, col);
         return ServerMessage::TicTacToe(TicTacToePayloadToClient {
-            board: serialize_board(game),
-            whos_turn: format_player(game.whos_turn.clone()),
-            status: "invalid_move".to_string(),
+            board: Some(serialize_board_as_numbers(game)),
+            whos_turn: game.current_player_name().map(|s| s.to_string()),
+            status: Some("invalid_move".to_string()),
         });
     }
 
+    // Make the move
     game.mark_spot(row, col);
     game.check_winner();
+    
+    println!("[TicTacToe] {} made move at {}", payload.whos_turn, payload.choice);
+    println!("[TicTacToe] Winner status: {:?}", game.winner);
+
     if game.winner == GameWinner::Pending {
         game.next_turn();
     }
 
     ServerMessage::TicTacToe(TicTacToePayloadToClient {
-        board: serialize_board(game),
-        whos_turn: format_player(game.whos_turn.clone()),
-        status: format_status(game),
+        board: Some(serialize_board_as_numbers(game)),
+        whos_turn: game.current_player_name().map(|s| s.to_string()),
+        status: Some(format_status_with_names(game)),
     })
 }
 
-
 // --- Utility functions ---
-fn serialize_board(game: &TicTacToeModel) -> Vec<String> {
+
+/// ✅ FIXED: Serialize board as Vec<Vec<i32>> (number[][])
+fn serialize_board_as_numbers(game: &TicTacToeModel) -> Vec<Vec<i32>> {
     game.board
         .iter()
-        .flatten()
-        .map(|&v| match v {
-            1 => "X".to_string(),
-            -1 => "O".to_string(),
-            _ => "".to_string(),
-        })
+        .map(|row| row.iter().map(|&v| v as i32).collect())
         .collect()
 }
 
-fn format_player(player: Player) -> String {
-    match player {
-        Player::Player1 => "x".to_string(),
-        Player::Player2 => "o".to_string(),
-    }
-}
-
-fn format_status(game: &TicTacToeModel) -> String {
+/// ✅ FIXED: Format status with actual player names and correct game over states
+fn format_status_with_names(game: &TicTacToeModel) -> String {
     match game.winner {
         GameWinner::Pending => {
-            if game.whos_turn == Player::Player1 {
-                "next_x".to_string()
-            } else {
-                "next_o".to_string()
-            }
+            // Return "IN_PROGRESS" during active game
+            "IN_PROGRESS".to_string()
         }
         GameWinner::Player1 => "gameover_x".to_string(),
         GameWinner::Player2 => "gameover_o".to_string(),
-        GameWinner::Tie => "gameover_tie".to_string(),
+        GameWinner::Tie => "gameover_draw".to_string(),
     }
 }
 
