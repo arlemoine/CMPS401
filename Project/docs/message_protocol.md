@@ -59,7 +59,7 @@ Handles operations related to joining or leaving a game room. To join a room, us
 
 Handles operations related to sending and receiving chat messages in a given game room. The frontend utilizes the "send" keyword for the action while the backend broadcasts to everyone in the game room via the "broadcast" keyword.
 
-**Example (Client -> Server):** 
+**Example (Client -> Server):**
 
 ```json
 {
@@ -73,7 +73,7 @@ Handles operations related to sending and receiving chat messages in a given gam
 }
 ```
 
-**Example (Server -> Client):** 
+**Example (Server -> Client):**
 
 ```json
 {
@@ -91,7 +91,7 @@ Handles operations related to sending and receiving chat messages in a given gam
 
 Handles operations related to the game state and actions of the game TicTacToe. Note that messages differ in that only the choice made is needed to be sent to the server while the server needs to send the entire state of the game back to the frontend. The state of the game can efficiently be summed up in a handful of status messages (as well as the state of the board) as shown in the example.
 
-**Example (Client -> Server):** 
+**Example (Client -> Server):**
 
 ```json
 {
@@ -103,7 +103,7 @@ Handles operations related to the game state and actions of the game TicTacToe. 
 }
 ```
 
-**Example (Server -> Client):** 
+**Example (Server -> Client):**
 
 ```json
 {
