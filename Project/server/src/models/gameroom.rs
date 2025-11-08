@@ -1,11 +1,15 @@
 use tokio::sync::mpsc::UnboundedSender;
 use axum::extract::ws::Message;
 
-use crate::models::tictactoe::model::TicTacToeModel;
+use crate::models::{
+    rockpaperscissors::model::RockPaperScissorsModel,
+    tictactoe::model::TicTacToeModel,
+};
 
 #[derive(Debug)]
 pub enum GameType {
     TicTacToe(TicTacToeModel),
+    RockPaperScissors(RockPaperScissorsModel),
     // List other game types here
 }
 

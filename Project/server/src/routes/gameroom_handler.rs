@@ -7,9 +7,15 @@ use axum::extract::ws::Message;
 use crate::models::{
     appstate::AppState,
     gameroom::{GameRoom, GameType},
+    rockpaperscissors::model::RockPaperScissorsModel,
     tictactoe::model::TicTacToeModel,
 };
-use crate::types::{GameRoomPayload, ServerMessage, TicTacToePayloadToClient};
+use crate::types::{
+    GameRoomPayload,
+    RockPaperScissorsPayloadToClient,
+    ServerMessage,
+    TicTacToePayloadToClient,
+};
 
 /// Handles join/leave operations for game rooms.
 pub async fn gameroom_handler(
@@ -42,6 +48,7 @@ pub async fn handle_join(
     // Match the requested game type and create the appropriate GameType
     let game_type = match payload.game.as_str() {
         "tictactoe" => GameType::TicTacToe(TicTacToeModel::new()),
+        "rockpaperscissors" => GameType::RockPaperScissors(RockPaperScissorsModel::new()),
         other => {
             eprintln!("Unknown game type requested: {}", other);
             return ServerMessage::GameRoom(payload);
@@ -75,23 +82,46 @@ pub async fn handle_join(
     
     // ✅ If we now have 2 players, initialize the game and send initial state
     let should_start_game = all_players.len() == 2;
-    let initial_game_state = if should_start_game {
-        if let GameType::TicTacToe(game) = &mut room.game {
-            // Assign player names
-            game.player1_name = Some(all_players[0].clone());
-            game.player2_name = Some(all_players[1].clone());
-            
-            println!("[GameRoom] Game starting! Player 1 (X): {}, Player 2 (O): {}",
-                     all_players[0], all_players[1]);
-            
-            // Create initial game state message
-            Some(TicTacToePayloadToClient {
-                board: Some(vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]),
-                whos_turn: Some(all_players[0].clone()), // Player 1 starts
-                status: Some("IN_PROGRESS".to_string()),
-            })
-        } else {
-            None
+    let initial_game_state: Option<ServerMessage> = if should_start_game {
+        match &mut room.game {
+            GameType::TicTacToe(game) => {
+                game.player1_name = Some(all_players[0].clone());
+                game.player2_name = Some(all_players[1].clone());
+
+                println!(
+                    "[GameRoom] TicTacToe starting! Player 1 (X): {}, Player 2 (O): {}",
+                    all_players[0], all_players[1]
+                );
+
+                Some(ServerMessage::TicTacToe(TicTacToePayloadToClient {
+                    board: Some(vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]),
+                    whos_turn: Some(all_players[0].clone()), // Player 1 starts
+                    status: Some("IN_PROGRESS".to_string()),
+                }))
+            }
+            GameType::RockPaperScissors(game) => {
+                game.player1_name = Some(all_players[0].clone());
+                game.player2_name = Some(all_players[1].clone());
+                game.reset_round();
+
+                println!(
+                    "[GameRoom] RockPaperScissors starting! Player 1: {}, Player 2: {}",
+                    all_players[0], all_players[1]
+                );
+
+                Some(ServerMessage::RockPaperScissors(
+                    RockPaperScissorsPayloadToClient {
+                        game_id: payload.game_id.clone(),
+                        player1: Some(all_players[0].clone()),
+                        player2: Some(all_players[1].clone()),
+                        player1_choice: None,
+                        player2_choice: None,
+                        status: "waiting_for_choices".to_string(),
+                        winner: None,
+                        message: Some("Both players joined. Make your selection!".to_string()),
+                    },
+                ))
+            }
         }
     } else {
         None
@@ -107,8 +137,7 @@ pub async fn handle_join(
     if let Some(game_state) = initial_game_state {
         let rooms = state.rooms.read().await;
         if let Some(room) = rooms.get(&payload.game_id) {
-            let game_msg = ServerMessage::TicTacToe(game_state);
-            let serialized = serde_json::to_string(&game_msg).unwrap();
+            let serialized = serde_json::to_string(&game_state).unwrap();
             for tx in &room.txs {
                 let _ = tx.send(Message::Text(serialized.clone().into()));
             }
@@ -187,6 +216,36 @@ async fn handle_reset(
                     let game_msg = ServerMessage::TicTacToe(game_state);
                     let serialized = serde_json::to_string(&game_msg).unwrap();
                     
+                    for tx in &room.txs {
+                        let _ = tx.send(Message::Text(serialized.clone().into()));
+                    }
+                }
+            }
+            GameType::RockPaperScissors(model) => {
+                let p1 = model.player1_name.clone();
+                let p2 = model.player2_name.clone();
+                model.reset_round();
+
+                println!(
+                    "[GameRoom] RockPaperScissors game reset. Players: {:?} vs {:?}",
+                    p1, p2
+                );
+
+                if let (Some(player1), Some(player2)) = (p1, p2) {
+                    let payload = RockPaperScissorsPayloadToClient {
+                        game_id: payload.game_id.clone(),
+                        player1: Some(player1.clone()),
+                        player2: Some(player2.clone()),
+                        player1_choice: None,
+                        player2_choice: None,
+                        status: "waiting_for_choices".to_string(),
+                        winner: None,
+                        message: Some("Round reset. Choose rock, paper, or scissors.".to_string()),
+                    };
+
+                    let game_msg = ServerMessage::RockPaperScissors(payload);
+                    let serialized = serde_json::to_string(&game_msg).unwrap();
+
                     for tx in &room.txs {
                         let _ = tx.send(Message::Text(serialized.clone().into()));
                     }

@@ -29,7 +29,9 @@ pub async fn ws_handler(
 /// Parse client JSON → enum
 fn parse_client_message(text: &str) -> Result<ClientMessage, String> {
     serde_json::from_str::<ClientMessage>(text)
-        .map_err(|_| "Invalid JSON for ClientMessage".into())
+        .map_err(|e| {
+            format!("Invalid JSON for ClientMessage: {} | snippet='{}'", e, text)
+        })
 }
 
 /// Broadcast to all clients in room

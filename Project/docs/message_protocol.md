@@ -48,7 +48,7 @@ Handles operations related to joining or leaving a game room. To join a room, us
   "type": "GameRoom",
   "data": {
     "game":"tictactoe",
-    "action": "join", // "join", "leave", "reset", note that "reset" is not yet implemented
+    "action": "join", // "join", "leave", "reset"
     "player_name": "John",
     "game_id": "HQCU", 
   }
@@ -65,7 +65,7 @@ Handles operations related to sending and receiving chat messages in a given gam
 {
   "type": "Chat",
   "data": {
-    "game_id": "HQCU", // Specifies game room related to the chat
+    "game_id": "room123", // Specifies game room related to the chat
     "player_name": "John", // Specifies who is sending the message
     "chat_message": "Good game!", // Contents of the chat message
     "time": "" // This is left blank for a client-to-server message and then timestamped on the server side
@@ -79,7 +79,7 @@ Handles operations related to sending and receiving chat messages in a given gam
 {
   "type": "Chat",
   "data": {
-    "game_id": "HQCU", // Specifies game room related to the chat
+    "game_id": "room123", // Specifies game room related to the chat
     "player_name": "John", // Specifies who message originated from
     "chat_message": "Good game!", // Contents of the chat message
     "time": "11:57 AM" // This is generated automatically via timestamp on server and sent back to frontend during broadcast to all in game room
@@ -97,6 +97,7 @@ Handles operations related to the game state and actions of the game TicTacToe. 
 {
   "type": "TicTacToe",
   "data": {
+    "game_id": "room123",
     "whos_turn": "John", /// player_name of person who is attempting to make a move
     "choice": "A1", // Convention is A1 to C3 where letter = row and number = column
   }
@@ -111,10 +112,57 @@ Handles operations related to the game state and actions of the game TicTacToe. 
   "data": {
     "board": "[[0,-1,-1],[1,0,0],[0,1,0]]", // 2D status of board with x being represented by 1's and o being represented by -1's
     "whos_turn": "John", // player_name of person whose turn it currently is
-    "status": "A1", // "next_x", "next_o", "gameover_tie", "gameover_x", "gameover_o", "invalid_move", "invalid_player"
+    "status": "IN_PROGRESS", // "IN_PROGRESS", "gameover_tie", "gameover_x", "gameover_o", "invalid_move", "invalid_player"
   }
 }
 ```
+
+### 5. RockPaperScissors
+
+Handles the real-time state for Rock/Paper/Scissors matches. The client sends its choice (`rock`, `paper`, or `scissors`) and the server keeps the round state for both players. Once both players lock in, the server evaluates the winner and broadcasts the result to everyone in the room.
+
+**Example (Client -> Server):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "HQCU",
+    "player_name": "John",
+    "choice": "rock"
+  }
+}
+```
+
+`choice` can be omitted if the client simply wants to refresh the latest game state.
+
+**Example (Server -> Client):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "HQCU",
+    "player1": "John",
+    "player2": "Jane",
+    "player1_choice": "rock",
+    "player2_choice": "scissors",
+    "status": "round_complete",
+    "winner": "John",
+    "message": "John wins this round!"
+  }
+}
+```
+
+Possible `status` values:
+
+- `waiting_for_opponent` – fewer than two players have joined.
+- `waiting_for_choices` – both players joined but neither has submitted a move.
+- `waiting_for_opponent_choice` – one player has locked in, waiting for the other.
+- `round_complete` – both choices were made and the outcome was computed.
+- `invalid_choice`, `unknown_player`, `room_not_found`, `wrong_game_type` – error states.
+
+When a round ends in a tie, the server sets `winner` to `"tie"`. Otherwise it contains the winner's player name.
 
 ## Workflow for Adding New Message Types
 

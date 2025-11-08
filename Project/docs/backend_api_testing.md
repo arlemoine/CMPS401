@@ -4,7 +4,7 @@ This document describes how to manually test your WebSocket backend using the `w
 
 ## 1. Prerequisites
 
-- Ensure your backend is running on the correct port (default assumed: `ws://localhost:3000/ws`).
+- Ensure your backend is running on the correct port (default assumed: `ws://localhost:3001/ws`).
 - Install [`websocat`](https://github.com/vi/websocat):
   ```bash
   cargo install websocat
@@ -24,13 +24,13 @@ Open **two separate terminal windows**.
 ### Terminal 1 (User A)
 
 ```bash
-websocat ws://localhost:3000/ws
+websocat ws://localhost:3001/ws
 ```
 
 ### Terminal 2 (User B)
 
 ```bash
-websocat ws://localhost:3000/ws
+websocat ws://localhost:3001/ws
 ```
 
 ## 4. Test flow
@@ -78,7 +78,7 @@ Send in Terminal 1:
 * Both terminals receive the broadcast:
 
 ```json
-{"type":"Chat","data":{"action":"send","game_id":"room123","player_name":"Alice","chat_message":"Hello Bob!","time":"03:27 PM"}}
+{"type":"Chat","data":{"game_id":"room123","player_name":"Alice","chat_message":"Hello Bob!","time":"03:27 PM"}}
 ```
 
 *(time will match server timestamp)*
@@ -88,7 +88,7 @@ Send in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"Chat","data":{"action":"send","game_id":"room123","player_name":"Bob","chat_message":"Hey Alice!","time":""}}
+{"type":"Chat","data":{"game_id":"room123","player_name":"Bob","chat_message":"Hey Alice!","time":""}}
 ```
 
 **Expected:**
@@ -100,7 +100,7 @@ Send in Terminal 2:
 Send in Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"action":"leave","player_name":"Alice","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"leave","player_name":"Alice","game_id":"room123"}}
 ```
 
 **Expected:**
@@ -113,7 +113,7 @@ Send in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"Chat","data":{"action":"send","game_id":"room123","player_name":"Bob","chat_message":"Still here!","time":""}}
+{"type":"Chat","data":{"game_id":"room123","player_name":"Bob","chat_message":"Still here!","time":""}}
 ```
 
 **Expected:**
@@ -125,7 +125,7 @@ Send in Terminal 2:
 Send in Terminal 2:
 
 ```json
-{"type":"GameRoom","data":{"action":"leave","player_name":"Bob","game_id":"room123"}}
+{"type":"GameRoom","data":{"game":"tictactoe","action":"leave","player_name":"Bob","game_id":"room123"}}
 ```
 
 **Expected:**
@@ -148,7 +148,7 @@ Send in any terminal:
 Send in Terminal 1:
 
 ```json
-{"type":"TicTacToe","data":{"whos_turn":"Alice","choice":"A1"}}
+{"type":"TicTacToe","data":{"game_id":"room123","whos_turn":"Alice","choice":"A1"}}
 ```
 
 **Expected server response to both players:**
@@ -158,8 +158,8 @@ Send in Terminal 1:
   "type":"TicTacToe",
   "data":{
     "board":["X","","","","","","","",""],
-    "whos_turn":"o",
-    "status":"next_o"
+    "whos_turn":"Bob",
+    "status":"IN_PROGRESS"
   }
 }
 ```
@@ -169,7 +169,7 @@ Send in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"TicTacToe","data":{"choice":"B2","game_id":"room123","player_name":"Bob"}}
+{"type":"TicTacToe","data":{"game_id":"room123","whos_turn":"Bob","choice":"B2"}}
 ```
 
 **Expected server response:**
@@ -179,8 +179,8 @@ Send in Terminal 2:
   "type":"TicTacToe",
   "data":{
     "board":["X","","","","O","","","",""],
-    "whos_turn":"x",
-    "status":"next_x"
+    "whos_turn":"Alice",
+    "status":"IN_PROGRESS"
   }
 }
 ```
@@ -197,7 +197,7 @@ Players take turns sending moves:
   "type":"TicTacToe",
   "data":{
     "board":[...current board...],
-    "whos_turn":"x" or "o",
+    "whos_turn":"Alice" or "Bob",
     "status":"invalid_move"
   }
 }
@@ -210,7 +210,7 @@ Players take turns sending moves:
   "type":"TicTacToe",
   "data":{
     "board":[...final board...],
-    "whos_turn":"x" or "o",
+    "whos_turn":"Alice" or "Bob",
     "status":"gameover_x" or "gameover_o"
   }
 }
@@ -223,7 +223,7 @@ Players take turns sending moves:
   "type":"TicTacToe",
   "data":{
     "board":[...final board...],
-    "whos_turn":"x" or "o",
+    "whos_turn":"Alice" or "Bob",
     "status":"gameover_tie"
   }
 }
@@ -232,7 +232,7 @@ Players take turns sending moves:
 **Expected server response:**
 
 ```json
-{"type":"Echo","data":{"message":"Invalid JSON format for ClientMessage"}}
+{"type":"Echo","data":{"message":"Invalid JSON format for ClientMessage, <error details>"}}
 ```
 
 ## 5. Notes

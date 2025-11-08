@@ -12,6 +12,7 @@ pub enum ClientMessage {
     GameRoom(GameRoomPayload),
     Chat(ChatPayload),
     TicTacToe(TicTacToePayloadToServer),
+    RockPaperScissors(RockPaperScissorsPayloadToServer),
 }
 
 /// Messages sent from the server to the client.
@@ -22,6 +23,7 @@ pub enum ServerMessage {
     GameRoom(GameRoomPayload),
     Chat(ChatPayload),
     TicTacToe(TicTacToePayloadToClient),
+    RockPaperScissors(RockPaperScissorsPayloadToClient),
 }
 
 // -------------------------------------------------------------
@@ -37,7 +39,7 @@ pub struct EchoPayload {
 /// Payload for GameRoom message type
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GameRoomPayload {
-    pub game: String, // "tictactoe", etc
+    pub game: String, // "tictactoe", "rockpaperscissors", etc
     pub action: String, // "join", "leave", "reset"
     pub player_name: String,
     pub game_id: String,
@@ -73,4 +75,32 @@ pub struct TicTacToePayloadToServer {
     pub game_id: String, // ✅ Required field
     pub whos_turn: String, // Player name making the move
     pub choice: String, // "A1", "B2", etc.
+}
+
+/// Payload received FROM the client for RockPaperScissors
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct RockPaperScissorsPayloadToServer {
+    pub game_id: String,
+    pub player_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub choice: Option<String>, // optional so clients may request latest state
+}
+
+/// Payload sent TO the client for RockPaperScissors
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct RockPaperScissorsPayloadToClient {
+    pub game_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player1: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player2: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player1_choice: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player2_choice: Option<String>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub winner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
 }
