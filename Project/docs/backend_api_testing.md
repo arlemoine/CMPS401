@@ -8,6 +8,7 @@ This document describes how to manually test your WebSocket backend using the `w
 - Install [`websocat`](https://github.com/vi/websocat):
   ```bash
   cargo install websocat
+  ```
 
 ## 2. Starting the backend
 
@@ -40,13 +41,29 @@ websocat ws://localhost:3001/ws
 Send the following JSON in Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Alice","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Alice",
+    "game_id": "room123"
+  }
+}
 ```
 
 **Expected server response:**
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Alice","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Alice",
+    "game_id": "room123"
+  }
+}
 ```
 
 ### 4.2 User B joins the same game room
@@ -54,15 +71,31 @@ Send the following JSON in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Bob","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Bob",
+    "game_id": "room123"
+  }
+}
 ```
 
 **Expected behavior:**
 
-* Both terminals receive:
+- Both terminals receive:
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"join","player_name":"Bob","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Bob",
+    "game_id": "room123"
+  }
+}
 ```
 
 ### 4.3 User A sends a chat message
@@ -70,75 +103,124 @@ Send in Terminal 2:
 Send in Terminal 1:
 
 ```json
-{"type":"Chat","data":{"action":"send","game_id":"room123","player_name":"Alice","chat_message":"Hello Bob!","time":""}}
+{
+  "type": "Chat",
+  "data": {
+    "action": "send",
+    "game_id": "room123",
+    "player_name": "Alice",
+    "chat_message": "Hello Bob!",
+    "time": ""
+  }
+}
 ```
 
 **Expected:**
 
-* Both terminals receive the broadcast:
+- Both terminals receive the broadcast:
 
 ```json
-{"type":"Chat","data":{"game_id":"room123","player_name":"Alice","chat_message":"Hello Bob!","time":"03:27 PM"}}
+{
+  "type": "Chat",
+  "data": {
+    "game_id": "room123",
+    "player_name": "Alice",
+    "chat_message": "Hello Bob!",
+    "time": "03:27 PM"
+  }
+}
 ```
 
-*(time will match server timestamp)*
+_(time will match server timestamp)_
 
 ### 4.4 User B sends a chat message
 
 Send in Terminal 2:
 
 ```json
-{"type":"Chat","data":{"game_id":"room123","player_name":"Bob","chat_message":"Hey Alice!","time":""}}
+{
+  "type": "Chat",
+  "data": {
+    "game_id": "room123",
+    "player_name": "Bob",
+    "chat_message": "Hey Alice!",
+    "time": ""
+  }
+}
 ```
 
 **Expected:**
 
-* Both terminals receive Bob’s chat message with server timestamp.
+- Both terminals receive Bob’s chat message with server timestamp.
 
 ### 4.5 User A leaves the game room
 
 Send in Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"leave","player_name":"Alice","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "leave",
+    "player_name": "Alice",
+    "game_id": "room123"
+  }
+}
 ```
 
 **Expected:**
 
-* Alice removed from room
-* Alice’s tx removed from room’s list
+- Alice removed from room
+- Alice’s tx removed from room’s list
 
 ### 4.6 User B sends a chat after Alice left
 
 Send in Terminal 2:
 
 ```json
-{"type":"Chat","data":{"game_id":"room123","player_name":"Bob","chat_message":"Still here!","time":""}}
+{
+  "type": "Chat",
+  "data": {
+    "game_id": "room123",
+    "player_name": "Bob",
+    "chat_message": "Still here!",
+    "time": ""
+  }
+}
 ```
 
 **Expected:**
 
-* Only Bob receives the message (Alice has left)
+- Only Bob receives the message (Alice has left)
 
 ### 4.7 User B leaves the game room
 
 Send in Terminal 2:
 
 ```json
-{"type":"GameRoom","data":{"game":"tictactoe","action":"leave","player_name":"Bob","game_id":"room123"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "leave",
+    "player_name": "Bob",
+    "game_id": "room123"
+  }
+}
 ```
 
 **Expected:**
 
-* Room is now empty
-* Room is deleted from `AppState`
+- Room is now empty
+- Room is deleted from `AppState`
 
 ### 4.8 Testing malformed JSON
 
 Send in any terminal:
 
 ```json
-{"invalid":"json"}
+{ "invalid": "json" }
 ```
 
 ## 4.9 TicTacToe gameplay between two players
@@ -148,18 +230,21 @@ Send in any terminal:
 Send in Terminal 1:
 
 ```json
-{"type":"TicTacToe","data":{"game_id":"room123","whos_turn":"Alice","choice":"A1"}}
+{
+  "type": "TicTacToe",
+  "data": { "game_id": "room123", "whos_turn": "Alice", "choice": "A1" }
+}
 ```
 
 **Expected server response to both players:**
 
 ```json
 {
-  "type":"TicTacToe",
-  "data":{
-    "board":["X","","","","","","","",""],
-    "whos_turn":"Bob",
-    "status":"IN_PROGRESS"
+  "type": "TicTacToe",
+  "data": {
+    "board": ["X", "", "", "", "", "", "", "", ""],
+    "whos_turn": "Bob",
+    "status": "IN_PROGRESS"
   }
 }
 ```
@@ -169,18 +254,21 @@ Send in Terminal 1:
 Send in Terminal 2:
 
 ```json
-{"type":"TicTacToe","data":{"game_id":"room123","whos_turn":"Bob","choice":"B2"}}
+{
+  "type": "TicTacToe",
+  "data": { "game_id": "room123", "whos_turn": "Bob", "choice": "B2" }
+}
 ```
 
 **Expected server response:**
 
 ```json
 {
-  "type":"TicTacToe",
-  "data":{
-    "board":["X","","","","O","","","",""],
-    "whos_turn":"Alice",
-    "status":"IN_PROGRESS"
+  "type": "TicTacToe",
+  "data": {
+    "board": ["X", "", "", "", "O", "", "", "", ""],
+    "whos_turn": "Alice",
+    "status": "IN_PROGRESS"
   }
 }
 ```
@@ -189,8 +277,8 @@ Send in Terminal 2:
 
 Players take turns sending moves:
 
-* Valid moves update the board and switch `whos_turn`.
-* Invalid moves (occupied cell or invalid choice) return:
+- Valid moves update the board and switch `whos_turn`.
+- Invalid moves (occupied cell or invalid choice) return:
 
 ```json
 {
@@ -203,7 +291,7 @@ Players take turns sending moves:
 }
 ```
 
-* When a player wins:
+- When a player wins:
 
 ```json
 {
@@ -216,7 +304,7 @@ Players take turns sending moves:
 }
 ```
 
-* When the board is full and no winner:
+- When the board is full and no winner:
 
 ```json
 {
@@ -232,12 +320,324 @@ Players take turns sending moves:
 **Expected server response:**
 
 ```json
-{"type":"Echo","data":{"message":"Invalid JSON format for ClientMessage, <error details>"}}
+{
+  "type": "Echo",
+  "data": {
+    "message": "Invalid JSON format for ClientMessage, <error details>"
+  }
+}
 ```
+
+## 4.10 RockPaperScissors gameplay and messaging
+
+These tests validate the RockPaperScissors message flow described in `message_protocol.md`.
+
+### 4.10.1 Join a RockPaperScissors room
+
+(Use two terminals as before.)
+
+Terminal 1 (Player A – Alice):
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "join",
+    "player_name": "Alice",
+    "game_id": "rps001"
+  }
+}
+```
+
+Terminal 2 (Player B – Bob):
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "join",
+    "player_name": "Bob",
+    "game_id": "rps001"
+  }
+}
+```
+
+Expected:
+
+- Each join echoed/broadcast (implementation-dependent, same pattern as TicTacToe GameRoom join).
+- After both joins you can query RPS state.
+
+### 4.10.2 Player A queries current round (no choice yet)
+
+Terminal 1:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alice" }
+}
+```
+
+Expected status (one of):
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Alice",
+    "player2": "Bob",
+    "player1_choice": null,
+    "player2_choice": null,
+    "status": "waiting_for_choices",
+    "winner": null,
+    "message": "Waiting for both players."
+  }
+}
+```
+
+(If Bob not joined yet you may see `waiting_for_opponent`.)
+
+### 4.10.3 Player A submits a choice
+
+Terminal 1:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alice", "choice": "rock" }
+}
+```
+
+Expected broadcast:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Alice",
+    "player2": "Bob",
+    "player1_choice": "rock",
+    "player2_choice": null,
+    "status": "waiting_for_opponent_choice",
+    "winner": null,
+    "message": "Waiting for opponent choice."
+  }
+}
+```
+
+### 4.10.4 Player B submits a choice (round resolves)
+
+Terminal 2:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Bob", "choice": "scissors" }
+}
+```
+
+Expected broadcast (example where Alice wins):
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Alice",
+    "player2": "Bob",
+    "player1_choice": "rock",
+    "player2_choice": "scissors",
+    "status": "round_complete",
+    "winner": "Alice",
+    "message": "Alice wins this round!"
+  }
+}
+```
+
+### 4.10.5 Tie scenario
+
+Have both players choose the same value (e.g. both send `"rock"`):
+
+Expected:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Alice",
+    "player2": "Bob",
+    "player1_choice": "rock",
+    "player2_choice": "rock",
+    "status": "round_complete",
+    "winner": "tie",
+    "message": "Round is a tie."
+  }
+}
+```
+
+### 4.10.6 Start a new round
+
+After `round_complete`, either player sends a new choice (or first queries state). Example:
+
+Terminal 2:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Bob", "choice": "paper" }
+}
+```
+
+Expected:
+
+- Previous choices cleared or implicitly replaced per backend design.
+- Status transitions to `waiting_for_opponent_choice` (if only one new choice so far).
+
+### 4.10.7 Refresh latest state (no new choice)
+
+Either terminal:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alice" }
+}
+```
+
+Expected: Current round snapshot (no change in state).
+
+### 4.10.8 Invalid choice
+
+Terminal 1:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alice", "choice": "lizard" }
+}
+```
+
+Expected:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "status": "invalid_choice",
+    "message": "Choice must be rock, paper, or scissors."
+  }
+}
+```
+
+### 4.10.9 Unknown player
+
+Terminal 1 (player not joined as Charlie):
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Charlie", "choice": "rock" }
+}
+```
+
+Expected:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "status": "unknown_player",
+    "message": "Player not in this room."
+  }
+}
+```
+
+### 4.10.10 Room not found
+
+Use a non-existent room:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "nope123", "player_name": "Alice", "choice": "rock" }
+}
+```
+
+Expected:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "nope123",
+    "status": "room_not_found",
+    "message": "Room not found."
+  }
+}
+```
+
+### 4.10.11 Reset game state (optional)
+
+If you want to clear room/game (depends on backend support):
+
+Terminal 1:
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "reset",
+    "player_name": "Alice",
+    "game_id": "rps001"
+  }
+}
+```
+
+Expected: Room’s RockPaperScissors round state cleared (status returns to `waiting_for_choices` on next query).
+
+### 4.10.12 Players leave
+
+Terminal 1:
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "leave",
+    "player_name": "Alice",
+    "game_id": "rps001"
+  }
+}
+```
+
+Terminal 2:
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "leave",
+    "player_name": "Bob",
+    "game_id": "rps001"
+  }
+}
+```
+
+Expected: Room removed when empty.
 
 ## 5. Notes
 
-* Replace `room123` with any room ID you want to test.
-* Player names must be unique per room for this test to work correctly.
-* Time fields in chat messages are automatically set by the backend.
-* This testing setup is useful for validating the **full WebSocket flow** without a frontend.
+- Replace `room123` with any room ID you want to test.
+- Player names must be unique per room for this test to work correctly.
+- Time fields in chat messages are automatically set by the backend.
+- This testing setup is useful for validating the **full WebSocket flow** without a frontend.
