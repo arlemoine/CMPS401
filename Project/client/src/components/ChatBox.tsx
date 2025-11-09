@@ -1,3 +1,4 @@
+// client/src/components/ChatBox.tsx
 import { useState, useEffect, useRef } from "react";
 import {
   Box,
@@ -15,21 +16,22 @@ import { MessageSquare, X, SendHorizonal } from "lucide-react";
 import { useStore } from "../state/store";
 
 export default function ChatBox() {
-  const { playerName, gameId, chatMessages, addChatMessage } = useStore();
+  const { playerName, gameId, chatMessages } = useStore();
   const [message, setMessage] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
 
-  // ✅ Handle incoming messages
-//   useEffect(() => {
-//     ws.connect();
-//     const unsub = ws.onMessage((msg) => {
-//       if (msg.type === "Chat") addChatMessage(msg.data);
-//     });
-//     return () => unsub();
-//   }, [addChatMessage]);
+  // Debug: Log when chatMessages change
+  useEffect(() => {
+    console.log("[ChatBox] chatMessages updated:", chatMessages);
+  }, [chatMessages]);
 
-  // ✅ Auto-scroll to bottom when new messages appear
+  // Debug: Log gameId and playerName
+  useEffect(() => {
+    console.log("[ChatBox] gameId:", gameId, "playerName:", playerName);
+  }, [gameId, playerName]);
+
+  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     viewport.current?.scrollTo({
       top: viewport.current.scrollHeight,
@@ -38,14 +40,26 @@ export default function ChatBox() {
   }, [chatMessages]);
 
   const sendChat = () => {
-    if (!message.trim() || !gameId) return;
+    if (!message.trim() || !gameId) {
+      console.warn("[ChatBox] Cannot send - message or gameId missing", { message, gameId });
+      return;
+    }
+    
+    console.log("[ChatBox] Sending chat message:", {
+      game_id: gameId,
+      player_name: playerName,
+      chat_message: message,
+    });
+
+    // Send with action: "send" as per protocol
     ws.send({
       type: "Chat",
       data: {
+        action: "send",
         game_id: gameId,
         player_name: playerName,
         chat_message: message,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: "", // Server will fill this in
       },
     });
     setMessage("");

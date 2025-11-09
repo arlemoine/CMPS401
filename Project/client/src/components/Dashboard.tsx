@@ -1,3 +1,4 @@
+// client/src/components/Dashboard.tsx
 import React from "react";
 import { Image, Card, SimpleGrid, Title, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
@@ -9,64 +10,75 @@ const games = [
     name: "Tic Tac Toe",
     image: "https://upload.wikimedia.org/wikipedia/commons/3/32/Tic_tac_toe.svg",
     path: "/createjoin",
+    gameType: "tictactoe" as const,
   },
   {
     name: "Snake Game",
     image: "https://cdn-icons-png.flaticon.com/512/1179/1179120.png",
     path: "/tic-tac-toe",
+    gameType: null,
   },
   {
     name: "Memory Match",
     image: "https://cdn-icons-png.flaticon.com/512/1688/1688400.png",
     path: "/tic-tac-toe",
+    gameType: null,
   },
   {
     name: "Flappy Bird",
     image: "https://cdn-icons-png.flaticon.com/512/743/743007.png",
     path: "/tic-tac-toe",
+    gameType: null,
   },
   {
     name: "2048",
     image: "https://cdn-icons-png.flaticon.com/512/906/906175.png",
     path: "/tic-tac-toe",
+    gameType: null,
   },
   {
     name: "Rock Paper Scissors",
     image: "https://cdn-icons-png.flaticon.com/512/1048/1048949.png",
-    path: "/tic-tac-toe",
+    path: "/createjoin",
+    gameType: "rockpaperscissors" as const,
   },
 ];
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { setGameId, setPlayerName, setPlayers, setBoard, setStatus, setWhosTurn } = useStore();
+  const {
+    setGameId,
+    setPlayerName,
+    setPlayers,
+    setBoard,
+    setStatus,
+    setWhosTurn,
+    setGameType,
+  } = useStore();
 
-  // ✅ Handle game click with proper cleanup
-  const handleGameClick = (path: string, gameName: string) => {
+  const handleGameClick = (path: string, gameName: string, gameType: "tictactoe" | "rockpaperscissors" | null) => {
     console.log(`[Dashboard] Starting ${gameName}`);
 
-    // ✅ Only cleanup for Tic Tac Toe (the active game)
-    if (gameName === "Tic Tac Toe") {
-      // Clear all game state
-      setGameId(null);
-      setPlayerName("");
-      setPlayers([]);
-      setBoard([
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0],
-      ]);
-      setStatus("waiting");
-      setWhosTurn("");
+    // Clear all game state
+    setGameId(null);
+    setPlayerName("");
+    setPlayers([]);
+    setBoard([
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ]);
+    setStatus("waiting");
+    setWhosTurn("");
+    setGameType(gameType);
 
-      // Clear sessionStorage
-      sessionStorage.removeItem("ttt_playerName");
+    // Clear sessionStorage
+    sessionStorage.removeItem("ttt_playerName");
 
-      // Close any existing WebSocket connection
-      ws.close();
+    // Close any existing WebSocket connection
+    ws.close();
 
-      console.log("[Dashboard] State cleared, navigating to CreateJoin");
-    }
+    console.log(`[Dashboard] State cleared, game type set to ${gameType}, navigating to CreateJoin`);
 
     // Navigate to the game
     navigate(path);
@@ -112,14 +124,21 @@ const Dashboard: React.FC = () => {
             radius="lg"
             withBorder
             style={{
-              cursor: "pointer",
-              backgroundColor: "rgba(255,255,255,0.1)",
+              cursor: game.gameType ? "pointer" : "not-allowed",
+              backgroundColor: game.gameType
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(100,100,100,0.1)",
               transition: "transform 0.25s ease, box-shadow 0.25s ease",
+              opacity: game.gameType ? 1 : 0.5,
             }}
-            onClick={() => handleGameClick(game.path, game.name)}
+            onClick={() =>
+              game.gameType && handleGameClick(game.path, game.name, game.gameType)
+            }
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.05)";
-              e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.4)";
+              if (game.gameType) {
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.4)";
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "scale(1)";
@@ -137,6 +156,11 @@ const Dashboard: React.FC = () => {
             <Text ta="center" fz="lg" fw={600}>
               {game.name}
             </Text>
+            {!game.gameType && (
+              <Text ta="center" fz="xs" c="dimmed" mt="xs">
+                Coming Soon
+              </Text>
+            )}
           </Card>
         ))}
       </SimpleGrid>

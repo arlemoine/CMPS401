@@ -22,10 +22,16 @@ export default function Board() {
     setGameId,
     setPlayerName,
     clearChatMessages,
+    addChatMessage,
   } = useStore();
 
   useEffect(() => {
     ws.connect();
+
+    // Set the game ID in the store when component mounts
+    if (id) {
+      setGameId(id);
+    }
 
     const unsub = ws.onMessage((msg) => {
       console.log("[Board] Received:", msg);
@@ -62,10 +68,19 @@ export default function Board() {
           setPlayers(serverPlayers);
         }
       }
+
+      if (msg.type === "Chat") {
+        console.log("[Board] Chat message received:", msg.data);
+        addChatMessage({
+          player_name: msg.data.player_name,
+          chat_message: msg.data.chat_message,
+          time: msg.data.time,
+        });
+      }
     });
 
     return () => unsub();
-  }, [setBoard, setWhosTurn, setStatus, setPlayers]);
+  }, [setBoard, setWhosTurn, setStatus, setPlayers, setGameId, addChatMessage, id]);
 
   const getPlayerMark = (player: string) => {
     const index = players.indexOf(player);
@@ -114,6 +129,8 @@ export default function Board() {
 
   // ✅ Navigate back to match with state flag
   const handleBackToRoom = () => {
+    if (!id) return;
+    
     clearChatMessages();
     console.log("[Board] Navigating back to match room");
     navigate(`/match/${id}`, { state: { fromBoard: true } });
