@@ -6,6 +6,7 @@ This document describes how to manually test your WebSocket backend using the `w
 
 - Ensure your backend is running on the correct port (default assumed: `ws://localhost:3001/ws`).
 - Install [`websocat`](https://github.com/vi/websocat):
+
   ```bash
   cargo install websocat
   ```
@@ -223,6 +224,17 @@ Send in any terminal:
 { "invalid": "json" }
 ```
 
+**Expected server response:**
+
+```json
+{
+  "type": "Echo",
+  "data": {
+    "message": "Invalid JSON format for ClientMessage, <error details>"
+  }
+}
+```
+
 ## 4.9 TicTacToe gameplay between two players
 
 #### 4.9.1 User A makes the first move
@@ -281,51 +293,19 @@ Players take turns sending moves:
 - Invalid moves (occupied cell or invalid choice) return:
 
 ```json
-{
-  "type":"TicTacToe",
-  "data":{
-    "board":[...current board...],
-    "whos_turn":"Alice" or "Bob",
-    "status":"invalid_move"
-  }
-}
+{"type":"TicTacToe","data":{"board":[...current board...],"whos_turn":"Alice or Bob","status":"invalid_move"}}
 ```
 
 - When a player wins:
 
 ```json
-{
-  "type":"TicTacToe",
-  "data":{
-    "board":[...final board...],
-    "whos_turn":"Alice" or "Bob",
-    "status":"gameover_x" or "gameover_o"
-  }
-}
+{"type":"TicTacToe","data":{"board":[...final board...],"whos_turn":"Alice or Bob","status":"gameover_x or gameover_o"}}
 ```
 
 - When the board is full and no winner:
 
 ```json
-{
-  "type":"TicTacToe",
-  "data":{
-    "board":[...final board...],
-    "whos_turn":"Alice" or "Bob",
-    "status":"gameover_tie"
-  }
-}
-```
-
-**Expected server response:**
-
-```json
-{
-  "type": "Echo",
-  "data": {
-    "message": "Invalid JSON format for ClientMessage, <error details>"
-  }
-}
+{"type":"TicTacToe","data":{"board":[...final board...],"whos_turn":"Alice or Bob","status":"gameover_tie"}}
 ```
 
 ## 4.10 RockPaperScissors gameplay and messaging
@@ -334,31 +314,43 @@ These tests validate the RockPaperScissors message flow described in `message_pr
 
 ### 4.10.1 Join a RockPaperScissors room
 
-(Use two terminals as before.)
-
 Terminal 1 (Player A – Alice):
 
 ```json
-{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"join","player_name":"Ada","game_id":"rps001"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "join",
+    "player_name": "Ada",
+    "game_id": "rps001"
+  }
+}
 ```
 
 Terminal 2 (Player B – Bob):
 
 ```json
-{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"join","player_name":"Alan","game_id":"rps001"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "join",
+    "player_name": "Alan",
+    "game_id": "rps001"
+  }
+}
 ```
-
-Expected:
-
-- Each join echoed/broadcast (implementation-dependent, same pattern as TicTacToe GameRoom join).
-- After both joins you can query RPS state.
 
 ### 4.10.2 Player A queries current round (no choice yet)
 
 Terminal 1:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada" }
+}
 ```
 
 Expected status (one of):
@@ -368,7 +360,7 @@ Expected status (one of):
   "type": "RockPaperScissors",
   "data": {
     "game_id": "rps001",
-    "player1": "Alice",
+    "player1": "Ada",
     "player2": "Bob",
     "player1_choice": null,
     "player2_choice": null,
@@ -386,16 +378,27 @@ Expected status (one of):
 Terminal 1:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice","choice":"rock"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada", "choice": "rock" }
+}
 ```
 
-Expected broadcast:
+Expected broadcast (example sequence):
 
 ```json
-{"type": "RockPaperScissors",
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada", "choice": "rock" }
+}
+```
+
+```json
+{
+  "type": "RockPaperScissors",
   "data": {
     "game_id": "rps001",
-    "player1": "Alice",
+    "player1": "Ada",
     "player2": "Bob",
     "player1_choice": "rock",
     "player2_choice": null,
@@ -411,7 +414,10 @@ Expected broadcast:
 Terminal 2:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Bob","choice":"scissors"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alan", "choice": "scissors" }
+}
 ```
 
 Expected broadcast (example where Alice wins):
@@ -421,20 +427,36 @@ Expected broadcast (example where Alice wins):
   "type": "RockPaperScissors",
   "data": {
     "game_id": "rps001",
-    "player1": "Alice",
-    "player2": "Bob",
+    "player1": "Ada",
+    "player2": "Alan",
     "player1_choice": "rock",
     "player2_choice": "scissors",
     "status": "round_complete",
-    "winner": "Alice",
-    "message": "Alice wins this round!"
+    "winner": "Ada",
+    "message": "Ada wins this round!"
   }
 }
 ```
 
 ### 4.10.5 Tie scenario
 
-Have both players choose the same value (e.g. both send `"rock"`):
+Terminal 1:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada", "choice": "rock" }
+}
+```
+
+Terminal 2:
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alan", "choice": "rock" }
+}
+```
 
 Expected:
 
@@ -443,8 +465,8 @@ Expected:
   "type": "RockPaperScissors",
   "data": {
     "game_id": "rps001",
-    "player1": "Alice",
-    "player2": "Bob",
+    "player1": "Ada",
+    "player2": "Alan",
     "player1_choice": "rock",
     "player2_choice": "rock",
     "status": "round_complete",
@@ -456,35 +478,42 @@ Expected:
 
 ### 4.10.6 Start a new round
 
-After `round_complete`, either player sends a new choice (or first queries state). Example:
-
 Terminal 2:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Bob","choice":"paper"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alan", "choice": "paper" }
+}
 ```
-
-Expected:
-
-- Previous choices cleared or implicitly replaced per backend design.
-- Status transitions to `waiting_for_opponent_choice` (if only one new choice so far).
 
 ### 4.10.7 Refresh latest state (no new choice)
 
 Either terminal:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada" }
+}
 ```
 
-Expected: Current round snapshot (no change in state).
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Alan" }
+}
+```
 
 ### 4.10.8 Invalid choice
 
 Terminal 1:
 
 ```json
-{"type": "RockPaperScissors","data": { "game_id": "rps001", "player_name": "Alice", "choice": "lizard" }}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada", "choice": "lizard" }
+}
 ```
 
 Expected:
@@ -502,10 +531,13 @@ Expected:
 
 ### 4.10.9 Unknown player
 
-Terminal 1 (player not joined as Charlie):
+Terminal 1:
 
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Charlie","choice":"rock"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Charlie", "choice": "rock" }
+}
 ```
 
 Expected:
@@ -523,10 +555,11 @@ Expected:
 
 ### 4.10.10 Room not found
 
-Use a non-existent room:
-
 ```json
-{"type":"RockPaperScissors","data":{"game_id":"nope123","player_name":"Alice","choice":"rock"}}
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "nope123", "player_name": "Ada", "choice": "rock" }
+}
 ```
 
 Expected:
@@ -544,35 +577,53 @@ Expected:
 
 ### 4.10.11 Reset game state (optional)
 
-If you want to clear room/game (depends on backend support):
-
 Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"reset","player_name":"Alice","game_id":"rps001"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "reset",
+    "player_name": "Ada",
+    "game_id": "rps001"
+  }
+}
 ```
-
-Expected: Room’s RockPaperScissors round state cleared (status returns to `waiting_for_choices` on next query).
 
 ### 4.10.12 Players leave
 
 Terminal 1:
 
 ```json
-{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"leave","player_name":"Alice","game_id":"rps001"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "leave",
+    "player_name": "Ada",
+    "game_id": "rps001"
+  }
+}
 ```
 
 Terminal 2:
 
 ```json
-{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"leave","player_name":"Bob","game_id":"rps001"}}
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "leave",
+    "player_name": "Alan",
+    "game_id": "rps001"
+  }
+}
 ```
-
-Expected: Room removed when empty.
 
 ## 5. Notes
 
 - Replace `room123` with any room ID you want to test.
-- Player names must be unique per room for this test to work correctly.
+- Player names must be unique per room.
 - Time fields in chat messages are automatically set by the backend.
-- This testing setup is useful for validating the **full WebSocket flow** without a frontend.
+- All JSON above is minified for direct paste into `websocat`.

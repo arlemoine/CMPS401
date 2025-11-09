@@ -1,4 +1,4 @@
-# WebSocket Message Protocol for Tic-Tac-Toe Project
+# WebSocket Message Protocol for Tic-Tac-Toe & Rock-Paper-Scissors
 
 ## Purpose
 
@@ -6,168 +6,410 @@ This document defines the communication contract between the frontend and backen
 
 ## Overview
 
-All messages exchanged between the frontend and backend follow a standard JSON structure with two main fields:
-
-- `type`: A string indicating the message type.
-- `data`: An object containing the payload relevant to the message type.
+All messages use a common JSON envelope:
 
 ```json
 {
   "type": "MessageType",
-  "data": { /* message-specific content */ }
+  "data": {}
 }
 ```
 
-This uniform structure simplifies message parsing and handling on both ends.
+Direction is implied by context:
 
-## Current Message Types
+- Client -> Server: action or request payload from frontend.
+- Server -> Client: state broadcast or error/result.
+
+## Core Message Types
+
+1. Echo
+2. GameRoom
+3. Chat
+4. TicTacToe
+5. RockPaperScissors
+
+---
 
 ### 1. Echo
 
-Used primarily for testing connectivity and latency.
+Used for connectivity tests and server-issued informative or error messages (e.g. malformed JSON).
 
-**Example:**
+**Client -> Server (simple echo test):**
+
+```json
+{
+  "type": "Echo",
+  "data": { "message": "Hello, world!" }
+}
+```
+
+**Server -> Client (example malformed JSON response):**
 
 ```json
 {
   "type": "Echo",
   "data": {
-    "message": "Hello, world!"
+    "message": "Invalid JSON format for ClientMessage, <error details>"
   }
 }
 ```
 
+---
+
 ### 2. GameRoom
 
-Handles operations related to joining or leaving a game room. To join a room, use the keyword "join." **If the room does not exist**, it will be created. To leave a room, use the keyword "leave." If a game has been played and it is desirable to reset the state of the game in order to play again, the keyword "reset" can be passed to the server, telling the server to reset the state of the game and pass it back to the frontend.
+Join, leave, or reset a game room. If joining a non-existent room it is created. Supported `game` values: `tictactoe`, `rockpaperscissors`.
 
-**Example:**
+Actions:
+
+- `join`
+- `leave`
+- `reset` (clears in-room game state; players remain)
+
+**Client -> Server (join):**
 
 ```json
 {
   "type": "GameRoom",
   "data": {
-    "game":"tictactoe",
-    "action": "join", // "join", "leave", "reset"
-    "player_name": "John",
-    "game_id": "HQCU", 
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Alice",
+    "game_id": "room123"
   }
 }
 ```
+
+**Server -> Client (broadcast join):**
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "join",
+    "player_name": "Alice",
+    "game_id": "room123"
+  }
+}
+```
+
+**Client -> Server (leave):**
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "tictactoe",
+    "action": "leave",
+    "player_name": "Alice",
+    "game_id": "room123"
+  }
+}
+```
+
+**Client -> Server (reset – example for RockPaperScissors):**
+
+```json
+{
+  "type": "GameRoom",
+  "data": {
+    "game": "rockpaperscissors",
+    "action": "reset",
+    "player_name": "Ada",
+    "game_id": "rps001"
+  }
+}
+```
+
+---
 
 ### 3. Chat
 
-Handles operations related to sending and receiving chat messages in a given game room. The frontend utilizes the "send" keyword for the action while the backend broadcasts to everyone in the game room via the "broadcast" keyword.
+Client sends with `action: "send"`. Server rebroadcasts with `action: "broadcast"` and timestamp filled in. `time` is server-generated.
 
-**Example (Client -> Server):**
-
-```json
-{
-  "type": "Chat",
-  "data": {
-    "game_id": "room123", // Specifies game room related to the chat
-    "player_name": "John", // Specifies who is sending the message
-    "chat_message": "Good game!", // Contents of the chat message
-    "time": "" // This is left blank for a client-to-server message and then timestamped on the server side
-  }
-}
-```
-
-**Example (Server -> Client):**
+**Client -> Server:**
 
 ```json
 {
   "type": "Chat",
   "data": {
-    "game_id": "room123", // Specifies game room related to the chat
-    "player_name": "John", // Specifies who message originated from
-    "chat_message": "Good game!", // Contents of the chat message
-    "time": "11:57 AM" // This is generated automatically via timestamp on server and sent back to frontend during broadcast to all in game room
+    "action": "send",
+    "game_id": "room123",
+    "player_name": "Alice",
+    "chat_message": "Hello Bob!",
+    "time": ""
   }
 }
 ```
+
+**Server -> Client (broadcast):**
+
+```json
+{
+  "type": "Chat",
+  "data": {
+    "action": "broadcast",
+    "game_id": "room123",
+    "player_name": "Alice",
+    "chat_message": "Hello Bob!",
+    "time": "03:27 PM"
+  }
+}
+```
+
+---
 
 ### 4. TicTacToe
 
-Handles operations related to the game state and actions of the game TicTacToe. Note that messages differ in that only the choice made is needed to be sent to the server while the server needs to send the entire state of the game back to the frontend. The state of the game can efficiently be summed up in a handful of status messages (as well as the state of the board) as shown in the example.
+Board is a 1D array of 9 strings: indices 0..8 map to:
+Row A: A1=0, A2=1, A3=2
+Row B: B1=3, B2=4, B3=5
+Row C: C1=6, C2=7, C3=8
 
-**Example (Client -> Server):**
+Cell values: "X", "O", "" (empty). Server tracks turn and status.
+
+Client only sends attempted move with `choice` coordinate and `whos_turn` (the player's own name attempting the move).
+
+Statuses:
+
+- IN_PROGRESS
+- invalid_move (cell occupied or bad coordinate)
+- invalid_player (not that player's turn / not in room)
+- gameover_x
+- gameover_o
+- gameover_tie
+
+**Client -> Server (move):**
 
 ```json
 {
   "type": "TicTacToe",
   "data": {
     "game_id": "room123",
-    "whos_turn": "John", /// player_name of person who is attempting to make a move
-    "choice": "A1", // Convention is A1 to C3 where letter = row and number = column
+    "whos_turn": "Alice",
+    "choice": "A1"
   }
 }
 ```
 
-**Example (Server -> Client):**
+**Server -> Client (state broadcast after valid move):**
 
 ```json
 {
   "type": "TicTacToe",
   "data": {
-    "board": "[[0,-1,-1],[1,0,0],[0,1,0]]", // 2D status of board with x being represented by 1's and o being represented by -1's
-    "whos_turn": "John", // player_name of person whose turn it currently is
-    "status": "IN_PROGRESS", // "IN_PROGRESS", "gameover_tie", "gameover_x", "gameover_o", "invalid_move", "invalid_player"
+    "board": ["X", "", "", "", "", "", "", "", ""],
+    "whos_turn": "Bob",
+    "status": "IN_PROGRESS"
   }
 }
 ```
+
+**Server -> Client (invalid move):**
+
+```json
+{
+  "type": "TicTacToe",
+  "data": {
+    "board": ["X", "", "", "", "", "", "", "", ""],
+    "whos_turn": "Alice",
+    "status": "invalid_move"
+  }
+}
+```
+
+**Server -> Client (win example):**
+
+```json
+{
+  "type": "TicTacToe",
+  "data": {
+    "board": ["X", "X", "X", "", "O", "", "", "", "O"],
+    "whos_turn": "Bob",
+    "status": "gameover_x"
+  }
+}
+```
+
+**Server -> Client (tie example):**
+
+```json
+{
+  "type": "TicTacToe",
+  "data": {
+    "board": ["X", "O", "X", "X", "O", "O", "O", "X", "X"],
+    "whos_turn": "Alice",
+    "status": "gameover_tie"
+  }
+}
+```
+
+Reset: use `GameRoom` with `action: "reset"` for the room and `game: "tictactoe"`.
+
+---
 
 ### 5. RockPaperScissors
 
-Handles the real-time state for Rock/Paper/Scissors matches. The client sends its choice (`rock`, `paper`, or `scissors`) and the server keeps the round state for both players. Once both players lock in, the server evaluates the winner and broadcasts the result to everyone in the room.
+Round-based; players may query state without providing a choice. Choices: `rock`, `paper`, `scissors`.
 
-**Example (Client -> Server):**
+Client request:
+
+- With choice: submit/lock the player's move for current round.
+- Without choice: fetch latest state.
+
+Server broadcast includes both player names (player1/player2 ordering is server-defined), their choices (or null), status, winner, and message.
+
+Statuses:
+
+- waiting_for_opponent (fewer than two players)
+- waiting_for_choices (two players, no moves yet)
+- waiting_for_opponent_choice (one move submitted)
+- round_complete (both moves; winner resolved)
+- invalid_choice
+- unknown_player
+- room_not_found
+- wrong_game_type
+
+Winner: player name or "tie".
+
+**Client -> Server (query without choice):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada" }
+}
+```
+
+**Server -> Client (state waiting for choices):**
 
 ```json
 {
   "type": "RockPaperScissors",
   "data": {
-    "game_id": "HQCU",
-    "player_name": "John",
-    "choice": "rock"
+    "game_id": "rps001",
+    "player1": "Ada",
+    "player2": "Alan",
+    "player1_choice": null,
+    "player2_choice": null,
+    "status": "waiting_for_choices",
+    "winner": null,
+    "message": "Waiting for both players."
   }
 }
 ```
 
-`choice` can be omitted if the client simply wants to refresh the latest game state.
+**Client -> Server (submit choice):**
 
-**Example (Server -> Client):**
+```json
+{
+  "type": "RockPaperScissors",
+  "data": { "game_id": "rps001", "player_name": "Ada", "choice": "rock" }
+}
+```
+
+**Server -> Client (after first choice):**
 
 ```json
 {
   "type": "RockPaperScissors",
   "data": {
-    "game_id": "HQCU",
-    "player1": "John",
-    "player2": "Jane",
+    "game_id": "rps001",
+    "player1": "Ada",
+    "player2": "Alan",
+    "player1_choice": "rock",
+    "player2_choice": null,
+    "status": "waiting_for_opponent_choice",
+    "winner": null,
+    "message": "Waiting for opponent choice."
+  }
+}
+```
+
+**Server -> Client (round complete example winner):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Ada",
+    "player2": "Alan",
     "player1_choice": "rock",
     "player2_choice": "scissors",
     "status": "round_complete",
-    "winner": "John",
-    "message": "John wins this round!"
+    "winner": "Ada",
+    "message": "Ada wins this round!"
   }
 }
 ```
 
-Possible `status` values:
+**Server -> Client (tie):**
 
-- `waiting_for_opponent` – fewer than two players have joined.
-- `waiting_for_choices` – both players joined but neither has submitted a move.
-- `waiting_for_opponent_choice` – one player has locked in, waiting for the other.
-- `round_complete` – both choices were made and the outcome was computed.
-- `invalid_choice`, `unknown_player`, `room_not_found`, `wrong_game_type` – error states.
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "player1": "Ada",
+    "player2": "Alan",
+    "player1_choice": "rock",
+    "player2_choice": "rock",
+    "status": "round_complete",
+    "winner": "tie",
+    "message": "Round is a tie."
+  }
+}
+```
 
-When a round ends in a tie, the server sets `winner` to `"tie"`. Otherwise it contains the winner's player name.
+**Error (invalid choice):**
 
-## Workflow for Adding New Message Types
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "status": "invalid_choice",
+    "message": "Choice must be rock, paper, or scissors."
+  }
+}
+```
 
-1. **Define the new message type name and its data schema.**  
-2. **Implement backend support for handling and sending the message.**  
-3. **Update this protocol document to include the new message type with examples.**  
+**Error (unknown player):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "rps001",
+    "status": "unknown_player",
+    "message": "Player not in this room."
+  }
+}
+```
+
+**Error (room not found):**
+
+```json
+{
+  "type": "RockPaperScissors",
+  "data": {
+    "game_id": "nope123",
+    "status": "room_not_found",
+    "message": "Room not found."
+  }
+}
+```
+
+Reset: use `GameRoom` with `action: "reset"` and `game: "rockpaperscissors"`.
+
+---
+
+## Adding New Message Types
+
+1. **Define the new message type name and its data schema.**
+2. **Implement backend support for handling and sending the message.**
+3. **Update this protocol document to include the new message type with examples.**
 
 Maintaining this document up-to-date is critical for smooth collaboration and integration.
