@@ -1,152 +1,336 @@
 // client/src/pages/Board.tsx
 import { useEffect } from "react";
-import { Button, Stack, Title, Text, Group, Alert } from "@mantine/core";
-import { ws } from "../api/ws";
+import { Button, Stack, Title, Text, Alert, Grid, Badge, Group } from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
+import { ws } from "../api/ws";
 import { useStore } from "../state/store";
+import ChatBox from "../components/ChatBox";
 
 export default function Board() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    me,
+    playerName,
     players,
     board,
-    turn,
-    matchStatus,
+    whosTurn,
+    status,
     setBoard,
-    setTurn,
-    setMatchStatus,
-    setPlayers
+    setWhosTurn,
+    setStatus,
+    setPlayers,
+    setGameId,
+    setPlayerName,
+    clearChatMessages,
   } = useStore();
 
   useEffect(() => {
-    if (!id) return;
     ws.connect();
 
     const unsub = ws.onMessage((msg) => {
-      console.log("[Board] Received message:", msg);
+      console.log("[Board] Received:", msg);
 
-      if (msg.type === "state_update" && msg.payload.matchId === id) {
-        const p = msg.payload;
-        setPlayers(p.players);
-        setBoard(p.board || Array(9).fill(null));
-        setTurn(p.turn);
-        setMatchStatus(p.status);
+      if (msg.type === "TicTacToe") {
+        const { board: serverBoard, whos_turn, status: gameStatus } = msg.data;
+
+        if (serverBoard) {
+          try {
+            if (typeof serverBoard === "string") {
+              setBoard(JSON.parse(serverBoard));
+            } else if (Array.isArray(serverBoard)) {
+              setBoard(serverBoard);
+            }
+          } catch (e) {
+            console.error("[Board] Failed to parse board:", serverBoard, e);
+          }
+        }
+
+        if (whos_turn) {
+          console.log("[Board] Turn updated to:", whos_turn);
+          setWhosTurn(whos_turn);
+        }
+
+        if (gameStatus) {
+          console.log("[Board] Status updated to:", gameStatus);
+          setStatus(gameStatus);
+        }
       }
 
-      if (msg.type === "error") {
-        console.warn("[Board] error:", msg.payload);
-        alert(msg.payload.message);
+      if (msg.type === "GameRoom") {
+        const { players: serverPlayers } = msg.data;
+        if (serverPlayers && Array.isArray(serverPlayers)) {
+          setPlayers(serverPlayers);
+        }
       }
     });
 
     return () => unsub();
-  }, [id, setBoard, setTurn, setMatchStatus, setPlayers]);
+  }, [setBoard, setWhosTurn, setStatus, setPlayers]);
 
-  const handleCellClick = (index: number) => {
-    if (!id || !me) return;
-    if (matchStatus !== "IN_PROGRESS" || turn !== me.mark || board[index]) return;
-    
-    console.log(`[Board] Making move at index ${index}`);
-    ws.send({ type: "make_move", payload: { matchId: id, index } });
+  const getPlayerMark = (player: string) => {
+    const index = players.indexOf(player);
+    return index === 0 ? "X" : index === 1 ? "O" : "?";
   };
 
-  const renderCell = (value: string | null, index: number) => {
-    const isClickable = matchStatus === "IN_PROGRESS" && turn === me?.mark && !value;
-    
+  const getCellSymbol = (value: number) => {
+    if (value === 1) return "X";
+    if (value === -1) return "O";
+    return "";
+  };
+
+  const handleMove = (row: number, col: number) => {
+    if (!id || !playerName) {
+      console.warn("[Board] Missing game ID or player name");
+      return;
+    }
+
+    if (status.startsWith("gameover")) {
+      console.warn("[Board] Game is over");
+      return;
+    }
+
+    if (whosTurn !== playerName) {
+      console.warn(`[Board] Not your turn (current: ${whosTurn}, you: ${playerName})`);
+      return;
+    }
+
+    if (board[row][col] !== 0) {
+      console.warn("[Board] Cell already occupied");
+      return;
+    }
+
+    const choice = `${String.fromCharCode(65 + row)}${col + 1}`;
+    console.log(`[Board] ${playerName} making move: ${choice}`);
+
+    ws.send({
+      type: "TicTacToe",
+      data: {
+        game_id: id,
+        whos_turn: playerName,
+        choice,
+      },
+    });
+  };
+
+  // ✅ Navigate back to match with state flag
+  const handleBackToRoom = () => {
+    clearChatMessages();
+    console.log("[Board] Navigating back to match room");
+    navigate(`/match/${id}`, { state: { fromBoard: true } });
+  };
+
+  const handleMainMenu = () => {
+    console.log("[Board] Leaving game and going to main menu");
+    clearChatMessages();
+
+    if (id && playerName) {
+      ws.send({
+        type: "GameRoom",
+        data: {
+          game: "tictactoe",
+          action: "leave",
+          player_name: playerName,
+          game_id: id,
+        },
+      });
+    }
+
+    setGameId(null);
+    setPlayers([]);
+    setBoard([
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ]);
+    setWhosTurn("");
+    setStatus("waiting");
+    setPlayerName("");
+
+    sessionStorage.removeItem("ttt_playerName");
+    ws.close();
+
+    console.log("[Board] State reset, navigating to dashboard");
+    navigate("/");
+  };
+
+  const renderCell = (value: number, row: number, col: number) => {
+    const symbol = getCellSymbol(value);
+    const isClickable =
+      whosTurn === playerName &&
+      value === 0 &&
+      !status.startsWith("gameover") &&
+      status !== "waiting";
+
     return (
       <Button
-        key={index}
-        color={value ? (value === "X" ? "blue" : "red") : "gray"}
-        variant={value ? "filled" : "outline"}
-        style={{ 
-          width: 80, 
-          height: 80, 
-          fontSize: 24, 
-          borderRadius: 8,
-          cursor: isClickable ? 'pointer' : 'default'
-        }}
-        onClick={() => isClickable && handleCellClick(index)}
+        key={`${row}-${col}`}
+        color={symbol === "X" ? "blue" : symbol === "O" ? "red" : "gray"}
+        variant={symbol ? "filled" : "outline"}
+        onClick={() => isClickable && handleMove(row, col)}
         disabled={!isClickable}
+        style={{
+          width: 100,
+          height: 100,
+          fontSize: 40,
+          fontWeight: "bold",
+          borderRadius: 12,
+          cursor: isClickable ? "pointer" : "default",
+          transition: "all 0.2s",
+          border: isClickable ? "3px solid #228be6" : symbol ? "2px solid #495057" : "2px dashed #adb5bd",
+          boxShadow: isClickable ? "0 4px 12px rgba(34, 139, 230, 0.4)" : "none",
+        }}
       >
-        {value || ""}
+        {symbol}
       </Button>
     );
   };
 
-  const winner = checkWinner(board);
-  const isDraw = !winner && board.every(cell => cell !== null);
+  const isGameOver = status.startsWith("gameover");
+
+  const getWinner = () => {
+    if (status === "gameover_x") return players[0];
+    if (status === "gameover_o") return players[1];
+    return null;
+  };
+
+  const winner = getWinner();
 
   return (
-    <Stack align="center" mt="lg">
-      <Title order={2}>Tic-Tac-Toe</Title>
-      <Text>Match ID: {id}</Text>
+    <Grid mt="lg" gutter="xl" style={{ alignItems: "flex-start" }}>
+      <Grid.Col span="auto">
+        <Stack align="center">
+          <Title order={1} style={{ fontSize: 40 }}>
+            ⭕ Tic-Tac-Toe ❌
+          </Title>
+          <Text size="sm" c="dimmed">
+            Game ID: <strong>{id}</strong>
+          </Text>
 
-      {matchStatus === "WAITING" && (
-        <Alert color="yellow">Waiting for both players to join...</Alert>
-      )}
-
-      {matchStatus === "IN_PROGRESS" && (
-        <>
-          <Group mt="sm">
-            {players.map((p) => (
-              <Text key={p.id} fw={p.mark === turn ? 700 : 400}>
-                {p.displayName} ({p.mark}) {p.id === me?.id && "(You)"} {p.mark === turn && "⬅️ Turn"}
-              </Text>
+          <Group gap="lg" mt="md">
+            {players.map((player, idx) => (
+              <Badge
+                key={idx}
+                size="xl"
+                variant={player === playerName ? "filled" : "light"}
+                color={idx === 0 ? "blue" : "red"}
+                style={{
+                  padding: "12px 20px",
+                  fontSize: 16,
+                }}
+              >
+                <Group gap="xs">
+                  <Text fw={700}>{getPlayerMark(player)}</Text>
+                  <Text>|</Text>
+                  <Text>{player}</Text>
+                  {player === playerName && <Text fw={700}>← YOU</Text>}
+                </Group>
+              </Badge>
             ))}
           </Group>
-          
-          {me && (
-            <Text>
-              Your turn: {turn === me.mark ? "Yes" : "No"} (You are {me.mark})
-            </Text>
+
+          {status === "waiting" && (
+            <Alert color="yellow" mt="md" style={{ width: "100%", maxWidth: 400 }}>
+              ⏳ Waiting for opponent to join...
+            </Alert>
+          )}
+
+          {!isGameOver && whosTurn && status !== "waiting" && (
+            <Alert
+              color={whosTurn === playerName ? "blue" : "gray"}
+              mt="md"
+              style={{ width: "100%", maxWidth: 400 }}
+            >
+              <Group justify="center" gap="xs">
+                <Text size="lg" fw={600}>
+                  {whosTurn === playerName ? "🎮 YOUR TURN!" : `⏳ ${whosTurn}'s turn`}
+                </Text>
+                <Text size="lg" fw={700}>
+                  ({getPlayerMark(whosTurn)})
+                </Text>
+              </Group>
+            </Alert>
           )}
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 80px)",
-              gap: 8,
-              marginTop: 20,
+              gridTemplateColumns: "repeat(3, 100px)",
+              gap: 12,
+              marginTop: 30,
+              padding: 20,
+              backgroundColor: "rgba(0, 0, 0, 0.4)",
+              borderRadius: 16,
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
             }}
           >
-            {board.map(renderCell)}
+            {board.map((row, r) => row.map((cell, c) => renderCell(cell, r, c)))}
           </div>
-        </>
-      )}
 
-      {(matchStatus === "FINISHED" || winner || isDraw) && (
-        <Stack align="center" mt="lg">
-          {winner && (
-            <Alert color="green">
-              🎉 Winner: {players.find((p) => p.mark === winner)?.displayName ?? winner}!
-            </Alert>
+          {isGameOver && (
+            <Stack align="center" mt="xl" gap="md">
+              <Alert
+                color={winner === playerName ? "green" : "blue"}
+                title="🎉 GAME OVER!"
+                style={{ width: "100%", maxWidth: 500, fontSize: 18 }}
+              >
+                {status === "gameover_x" && (
+                  <Text size="lg" fw={600}>
+                    {winner === playerName
+                      ? "🏆 YOU WON with X!"
+                      : `${winner} won with X!`}
+                  </Text>
+                )}
+                {status === "gameover_o" && (
+                  <Text size="lg" fw={600}>
+                    {winner === playerName
+                      ? "🏆 YOU WON with O!"
+                      : `${winner} won with O!`}
+                  </Text>
+                )}
+                {status === "gameover_draw" && (
+                  <Text size="lg" fw={600}>
+                    🤝 It's a DRAW! No winner.
+                  </Text>
+                )}
+              </Alert>
+
+              <Group mt="md">
+                <Button
+                  size="lg"
+                  color="blue"
+                  onClick={handleBackToRoom}
+                >
+                  ← Back to Room
+                </Button>
+                <Button
+                  size="lg"
+                  color="green"
+                  variant="outline"
+                  onClick={handleMainMenu}
+                >
+                  🏠 Main Menu
+                </Button>
+              </Group>
+            </Stack>
           )}
-          {isDraw && (
-            <Alert color="yellow">It's a draw! No winner.</Alert>
+
+          {!isGameOver && (
+            <Button
+              mt="xl"
+              size="md"
+              color="red"
+              variant="outline"
+              onClick={handleMainMenu}
+            >
+              ❌ Leave Game
+            </Button>
           )}
         </Stack>
-      )}
+      </Grid.Col>
 
-      <Button mt="xl" color="red" onClick={() => navigate("/createjoin")}>
-        Leave Match
-      </Button>
-    </Stack>
+      <Grid.Col span="content">
+        <ChatBox />
+      </Grid.Col>
+    </Grid>
   );
-}
-
-function checkWinner(board: (string | null)[]): string | null {
-  const wins = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-    [0, 4, 8], [2, 4, 6] // diagonals
-  ];
-  
-  for (const [a, b, c] of wins) {
-    if (board[a] && board[a] === board[b] && board[b] === board[c]) {
-      return board[a];
-    }
-  }
-  return null;
 }

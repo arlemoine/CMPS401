@@ -1,3 +1,5 @@
-pub mod chat_manager;
-pub mod echo;
-pub mod join_game;
+pub mod chat_handler;
+pub mod echo_handler;
+pub mod gameroom_handler;
+pub mod tictactoe_handler;
+pub mod rockpaperscissors_handler;

@@ -11,12 +11,13 @@ use tokio;
 use tracing_subscriber;
 
 // Declare project modules
-mod types;
 mod config;
+mod models;
 mod routes;
+mod types;
 mod ws;
 
-use types::appstate::AppState;
+use models::appstate::AppState;
 use config::Config;
 use ws::ws_handler;
 
