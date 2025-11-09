@@ -9,13 +9,15 @@ use futures::{StreamExt, SinkExt};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
-use crate::{models::appstate::AppState, routes::tictactoe_handler::tictactoe_handler};
+use crate::{models::appstate::AppState};
 use crate::types::{ClientMessage, EchoPayload, ServerMessage};
 
 use crate::routes::{
     echo_handler::echo_handler,
     gameroom_handler::gameroom_handler,
     chat_handler::chat_handler,
+    tictactoe_handler::tictactoe_handler,
+    rockpaperscissors_handler::rockpaperscissors_handler,
 };
 
 #[axum::debug_handler]
@@ -99,6 +101,10 @@ pub async fn handle_socket(socket: WebSocket, app_state: Arc<AppState>) {
                     }
                     ClientMessage::TicTacToe(payload) => {
                         let response = tictactoe_handler(payload, &app_state, current_room.clone()).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
+                    }
+                    ClientMessage::RockPaperScissors(payload) => {
+                        let response = rockpaperscissors_handler(payload, &app_state, current_room.clone()).await;
                         broadcast_to_room(response, &app_state, &current_room).await;
                     }
                     other_variant => {

@@ -339,29 +339,13 @@ These tests validate the RockPaperScissors message flow described in `message_pr
 Terminal 1 (Player A – Alice):
 
 ```json
-{
-  "type": "GameRoom",
-  "data": {
-    "game": "rockpaperscissors",
-    "action": "join",
-    "player_name": "Alice",
-    "game_id": "rps001"
-  }
-}
+{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"join","player_name":"Ada","game_id":"rps001"}}
 ```
 
 Terminal 2 (Player B – Bob):
 
 ```json
-{
-  "type": "GameRoom",
-  "data": {
-    "game": "rockpaperscissors",
-    "action": "join",
-    "player_name": "Bob",
-    "game_id": "rps001"
-  }
-}
+{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"join","player_name":"Alan","game_id":"rps001"}}
 ```
 
 Expected:
@@ -374,10 +358,7 @@ Expected:
 Terminal 1:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Alice" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice"}}
 ```
 
 Expected status (one of):
@@ -405,17 +386,13 @@ Expected status (one of):
 Terminal 1:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Alice", "choice": "rock" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice","choice":"rock"}}
 ```
 
 Expected broadcast:
 
 ```json
-{
-  "type": "RockPaperScissors",
+{"type": "RockPaperScissors",
   "data": {
     "game_id": "rps001",
     "player1": "Alice",
@@ -434,10 +411,7 @@ Expected broadcast:
 Terminal 2:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Bob", "choice": "scissors" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Bob","choice":"scissors"}}
 ```
 
 Expected broadcast (example where Alice wins):
@@ -487,10 +461,7 @@ After `round_complete`, either player sends a new choice (or first queries state
 Terminal 2:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Bob", "choice": "paper" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Bob","choice":"paper"}}
 ```
 
 Expected:
@@ -503,10 +474,7 @@ Expected:
 Either terminal:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Alice" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Alice"}}
 ```
 
 Expected: Current round snapshot (no change in state).
@@ -516,10 +484,7 @@ Expected: Current round snapshot (no change in state).
 Terminal 1:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Alice", "choice": "lizard" }
-}
+{"type": "RockPaperScissors","data": { "game_id": "rps001", "player_name": "Alice", "choice": "lizard" }}
 ```
 
 Expected:
@@ -540,10 +505,7 @@ Expected:
 Terminal 1 (player not joined as Charlie):
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "rps001", "player_name": "Charlie", "choice": "rock" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"rps001","player_name":"Charlie","choice":"rock"}}
 ```
 
 Expected:
@@ -564,10 +526,7 @@ Expected:
 Use a non-existent room:
 
 ```json
-{
-  "type": "RockPaperScissors",
-  "data": { "game_id": "nope123", "player_name": "Alice", "choice": "rock" }
-}
+{"type":"RockPaperScissors","data":{"game_id":"nope123","player_name":"Alice","choice":"rock"}}
 ```
 
 Expected:
@@ -590,15 +549,7 @@ If you want to clear room/game (depends on backend support):
 Terminal 1:
 
 ```json
-{
-  "type": "GameRoom",
-  "data": {
-    "game": "rockpaperscissors",
-    "action": "reset",
-    "player_name": "Alice",
-    "game_id": "rps001"
-  }
-}
+{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"reset","player_name":"Alice","game_id":"rps001"}}
 ```
 
 Expected: Room’s RockPaperScissors round state cleared (status returns to `waiting_for_choices` on next query).
@@ -608,29 +559,13 @@ Expected: Room’s RockPaperScissors round state cleared (status returns to `wai
 Terminal 1:
 
 ```json
-{
-  "type": "GameRoom",
-  "data": {
-    "game": "rockpaperscissors",
-    "action": "leave",
-    "player_name": "Alice",
-    "game_id": "rps001"
-  }
-}
+{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"leave","player_name":"Alice","game_id":"rps001"}}
 ```
 
 Terminal 2:
 
 ```json
-{
-  "type": "GameRoom",
-  "data": {
-    "game": "rockpaperscissors",
-    "action": "leave",
-    "player_name": "Bob",
-    "game_id": "rps001"
-  }
-}
+{"type":"GameRoom","data":{"game":"rockpaperscissors","action":"leave","player_name":"Bob","game_id":"rps001"}}
 ```
 
 Expected: Room removed when empty.
