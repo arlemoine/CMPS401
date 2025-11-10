@@ -13,10 +13,10 @@ const games = [
     gameType: "tictactoe" as const,
   },
   {
-    name: "Snake Game",
+    name: "Uno",
     image: "https://cdn-icons-png.flaticon.com/512/1179/1179120.png",
-    path: "/tic-tac-toe",
-    gameType: null,
+    path: "/createjoin",
+    gameType: "uno" as const,
   },
   {
     name: "Memory Match",
@@ -56,7 +56,7 @@ const Dashboard: React.FC = () => {
     setGameType,
   } = useStore();
 
-  const handleGameClick = (path: string, gameName: string, gameType: "tictactoe" | "rockpaperscissors" | null) => {
+  const handleGameClick = (path: string, gameName: string, gameType: "tictactoe" | "rockpaperscissors" | "uno" | null) => {
     console.log(`[Dashboard] Starting ${gameName}`);
 
     // Clear all game state

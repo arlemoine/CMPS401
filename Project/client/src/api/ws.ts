@@ -1,6 +1,12 @@
 // client/src/api/ws.ts
 // WebSocket API aligned with Rust backend protocol
 
+// Card type for Uno
+export interface UnoCard {
+  color: string; // "Red", "Yellow", "Green", "Blue", "Wild"
+  rank: string;  // "0"-"9", "Skip", "Reverse", "DrawTwo", "Wild", "WildDrawFour"
+}
+
 export type ClientMsg =
   | {
       type: "Echo";
@@ -38,7 +44,18 @@ export type ClientMsg =
       data: {
         game_id: string;
         player_name: string;
-        choice?: string; // Optional: if not provided, queries state
+        choice?: string;
+      };
+    }
+  | {
+      type: "Uno";
+      data: {
+        game_id: string;
+        player_name: string;
+        action: string; // "start", "play_card", "draw_card", "pass_turn", "call_uno", "request_state"
+        card?: UnoCard;
+        choose_color?: string; // "Red", "Yellow", "Green", "Blue"
+        call_uno?: boolean;
       };
     };
 
@@ -83,6 +100,21 @@ export type ServerMsg =
         status: string;
         winner?: string | null;
         message?: string | null;
+      };
+    }
+  | {
+      type: "Uno";
+      data: {
+        game_id: string;
+        players?: string[] | null;
+        current_idx?: number | null;
+        direction?: number | null;
+        top_discard?: UnoCard | null;
+        chosen_color?: string | null;
+        pending_draw?: number | null;
+        public_counts?: number[] | null;
+        hand?: UnoCard[] | null;
+        winner?: string | null;
       };
     };
 
@@ -164,7 +196,7 @@ function createWS(): WSHandle {
         s.onopen = () => {
           socket = s;
           connecting = false;
-          reconnectAttempts = 0; // Reset on successful connection
+          reconnectAttempts = 0;
           flush(s);
           openHandlers.forEach((h) => h());
           console.log("[ws] ✅ connected");
@@ -185,7 +217,6 @@ function createWS(): WSHandle {
           connecting = false;
           closeHandlers.forEach((h) => h(ev.code, ev.reason));
 
-          // Only reconnect if it wasn't a normal closure
           if (ev.code !== 1000) {
             console.log("[ws] ❌ closed unexpectedly", ev.code, ev.reason);
             scheduleReconnect();
@@ -223,7 +254,7 @@ function createWS(): WSHandle {
     },
 
     close() {
-      reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent reconnection
+      reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
       socket?.close(1000, "User closed connection");
       socket = null;
       connecting = false;

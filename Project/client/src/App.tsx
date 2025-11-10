@@ -1,5 +1,3 @@
-
-
 // client/src/App.tsx
 import { useEffect, useState } from "react";
 import { Container, Title } from "@mantine/core";
@@ -12,6 +10,7 @@ import Board from "./pages/Board";
 import RockPaperScissors from "./pages/RockPaperScissor";
 import Dashboard from "./components/Dashboard";
 import bg from "./assets/bg20.jpg";
+import Uno from "./pages/Uno";
 
 function AppRoutes() {
   const [error, setError] = useState("");
@@ -96,6 +95,12 @@ function AppRoutes() {
           break;
         }
 
+        case "Uno": {
+          console.log("[App] Uno update:", msg.data);
+          // Uno component will handle its own state
+          break;
+        }
+
         case "Chat": {
           // Only add messages with action "broadcast" from server
           if (msg.data.action === "broadcast") {
@@ -127,6 +132,7 @@ function AppRoutes() {
       <Route path="/match/:id" element={<Match />} />
       <Route path="/board/:id" element={<Board />} />
       <Route path="/rockpaperscissors/:id" element={<RockPaperScissors />} />
+      <Route path="/uno/:id" element={<Uno />}  />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" />} />
@@ -143,62 +149,54 @@ export default function App() {
       <div
         style={{
           width: "100vw",
-          height: "100vh",
+          minHeight: "100vh",
           backgroundImage: `url(${bg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           backgroundAttachment: "fixed",
           display: "flex",
-          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           color: "white",
-          overflow: "hidden",
+          flexDirection: "column",
+          overflow: "auto",
+          padding: "20px 0",
         }}
       >
-        {/* Header - Fixed height */}
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem 2rem",
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            backdropFilter: "blur(10px)",
-            flexShrink: 0,
-          }}
-        >
-          <Title order={1} ta="center">
-            🎮 Multiplayer Game Prototype
-          </Title>
-        </div>
+        <Container size="lg" style={{ width: "100%", maxWidth: 1200 }}>
+          <div
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "1rem 2rem",
+              borderRadius: "8px",
+              marginBottom: "1.5rem",
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Title order={1} ta="center">
+              🎮 Multiplayer Game Prototype
+            </Title>
+          </div>
 
-        {/* Main Content - Scrollable */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            display: "flex",
-            justifyContent: "center",
-            padding: "1.5rem",
-          }}
-        >
           <Container
             size="lg"
             style={{
-              width: "100%",
-              maxWidth: 1200,
+              width: "95%",
               backgroundColor: "rgba(0, 0, 0, 0.7)",
               borderRadius: "12px",
               padding: "2rem",
               backdropFilter: "blur(10px)",
               boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
-              height: "fit-content",
             }}
           >
             <AppRoutes />
           </Container>
-        </div>
+        </Container>
       </div>
     </BrowserRouter>
   );

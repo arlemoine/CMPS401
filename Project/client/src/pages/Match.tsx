@@ -47,8 +47,11 @@ export default function Match() {
 
   // Auto-navigate when 2 players are ready (but NOT if came from board)
   useEffect(() => {
+    // For Uno, we might want to allow more than 2 players
+    const minPlayers = gameType === "uno" ? 2 : 2;
+    
     if (
-      players.length === 2 &&
+      players.length >= minPlayers &&
       !hasNavigated.current &&
       !cameFromBoard.current &&
       id
@@ -62,6 +65,8 @@ export default function Match() {
         // Route to appropriate board based on game type
         if (gameType === "rockpaperscissors") {
           navigate(`/rockpaperscissors/${id}`, { replace: false });
+        } else if (gameType === "uno") {
+          navigate(`/uno/${id}`, { replace: false });
         } else {
           navigate(`/board/${id}`, { replace: false });
         }
@@ -142,7 +147,10 @@ export default function Match() {
       }
 
       if (msg.type === "Chat") {
-        addChatMessage(msg.data);
+        // Only add messages with action "broadcast" from server
+        if (msg.data.action === "broadcast") {
+          addChatMessage(msg.data);
+        }
       }
     });
 
@@ -182,6 +190,8 @@ export default function Match() {
       cameFromBoard.current = false;
       if (gameType === "rockpaperscissors") {
         navigate(`/rockpaperscissors/${id}`);
+      } else if (gameType === "uno") {
+        navigate(`/uno/${id}`);
       } else {
         navigate(`/board/${id}`);
       }
@@ -257,6 +267,7 @@ export default function Match() {
   const getGameTitle = () => {
     if (gameType === "tictactoe") return "Tic Tac Toe";
     if (gameType === "rockpaperscissors") return "Rock Paper Scissors";
+    if (gameType === "uno") return "Uno";
     return "Game";
   };
 

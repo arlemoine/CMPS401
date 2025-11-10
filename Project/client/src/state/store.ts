@@ -7,7 +7,8 @@ interface ChatMessage {
   time: string;
 }
 
-type GameType = "tictactoe" | "rockpaperscissors" | null;
+// ✅ UPDATED: Added "uno" to GameType
+type GameType = "tictactoe" | "rockpaperscissors" | "uno" | null;
 
 interface Store {
   playerName: string;
