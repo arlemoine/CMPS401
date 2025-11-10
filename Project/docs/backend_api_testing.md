@@ -118,7 +118,7 @@ Send in Terminal 1:
 
 **Expected:**
 
-- Both terminals receive the broadcast:
+Both terminals receive the broadcast (_time will match server timestamp_):
 
 ```json
 {
@@ -131,8 +131,6 @@ Send in Terminal 1:
   }
 }
 ```
-
-_(time will match server timestamp)_
 
 ### 4.4 User B sends a chat message
 
@@ -237,7 +235,7 @@ Send in any terminal:
 
 ## 4.9 TicTacToe gameplay between two players
 
-#### 4.9.1 User A makes the first move
+### 4.9.1 User A makes the first move
 
 Send in Terminal 1:
 
