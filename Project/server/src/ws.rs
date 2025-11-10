@@ -18,6 +18,8 @@ use crate::routes::{
     chat_handler::chat_handler,
     tictactoe_handler::tictactoe_handler,
     rockpaperscissors_handler::rockpaperscissors_handler,
+    uno_handler::uno_handler,
+    uno_handler::dm_uno_private_hands,
 };
 
 #[axum::debug_handler]
@@ -106,6 +108,14 @@ pub async fn handle_socket(socket: WebSocket, app_state: Arc<AppState>) {
                     ClientMessage::RockPaperScissors(payload) => {
                         let response = rockpaperscissors_handler(payload, &app_state, current_room.clone()).await;
                         broadcast_to_room(response, &app_state, &current_room).await;
+                    }
+                    ClientMessage::Uno(payload) => {
+                        let response = uno_handler(payload, &app_state, current_room.clone()).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
+
+                        if let Some(room_id) = &*current_room.read().await {
+                            dm_uno_private_hands(app_state.clone(), room_id).await;
+                        }
                     }
                     other_variant => {
                         let err = format!(

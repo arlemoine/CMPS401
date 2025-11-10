@@ -93,14 +93,58 @@ impl UnoModel {
         self.players.get(self.current_idx)
     }
 
+    /// True if it's `name`'s turn.
+    pub fn is_players_turn(&self, name: &str) -> bool {
+        matches!(self.current_player(), Some(p) if p == name)
+    }
+
     pub fn hand_of_mut(&mut self, player: &str) -> Option<&mut Vec<UnoCard>> {
         self.hands.get_mut(player)
+    }
+
+    /// Remove exactly one card matching (color, rank) from player's hand. Returns true if removed.
+    pub fn remove_one_card(&mut self, player: &str, target: &UnoCard) -> bool {
+        if let Some(hand) = self.hands.get_mut(player) {
+            if let Some(pos) = hand.iter().position(|c| c.color == target.color && c.rank == target.rank) {
+                hand.remove(pos);
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Check whether player currently holds a card matching (color, rank).
+    pub fn has_card(&self, player: &str, target: &UnoCard) -> bool {
+        self.hands
+            .get(player)
+            .map(|h| h.iter().any(|c| c.color == target.color && c.rank == target.rank))
+            .unwrap_or(false)
     }
 
     pub fn public_counts(&self) -> Vec<u8> {
         self.players.iter()
             .map(|p| self.hands.get(p).map(|h| h.len() as u8).unwrap_or(0))
             .collect()
+    }
+
+    /// Draw a single card into player's hand. Returns true if a card was drawn.
+    pub fn draw_one(&mut self, player: &str) -> bool {
+        if let Some(c) = self.deck.pop() {
+            if let Some(h) = self.hands.get_mut(player) {
+                h.push(c);
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Draw up to n cards; returns number actually drawn (deck may deplete).
+    pub fn draw_n(&mut self, player: &str, n: usize) -> usize {
+        let mut k = 0;
+        for _ in 0..n {
+            if self.draw_one(player) { k += 1; } else { break; }
+        }
+        k
     }
 
     // Classic rule (no color lock): match color OR rank, or play any wild at any time
@@ -123,7 +167,7 @@ impl UnoModel {
     pub fn apply_reverse(&mut self, card: UnoCard) {
         self.discard_top = Some(card);
         if self.players.len() == 2 {
-            // reverse acts like skip in 2-player
+            // Reverse acts like Skip in 2-player
             self.advance_turn(2);
         } else {
             self.direction *= -1;
@@ -164,6 +208,20 @@ impl UnoModel {
         self.advance_turn(1);
     }
 
+    /// If there is a pending draw penalty at the start of the current player's turn,
+    /// enforce it (draw N and skip). Returns true if enforcement occurred.
+    pub fn enforce_pending_at_turn_start(&mut self) -> bool {
+        if self.pending_draw == 0 { return false; }
+        if let Some(p) = self.current_player().cloned() {
+            let n = self.pending_draw as usize;
+            self.pending_draw = 0;
+            self.draw_n(&p, n);
+            self.advance_turn(1);
+            return true;
+        }
+        false
+    }
+
     pub fn advance_turn(&mut self, steps: usize) {
         let n = self.players.len();
         if n == 0 { return; }
@@ -173,6 +231,52 @@ impl UnoModel {
             idx = (idx + dir).rem_euclid(n as isize);
         }
         self.current_idx = idx as usize;
+    }
+
+    /// Atomic play that enforces turn, legality, ownership, wild color choice, and winner.
+    pub fn play_card_tx(
+        &mut self,
+        player: &str,
+        card: &UnoCard,
+        choose_color: Option<UnoColor>,
+    ) -> Result<(), PlayError> {
+        if !self.is_players_turn(player) { return Err(PlayError::NotYourTurn); }
+
+        let top = match &self.discard_top { Some(c) => c.clone(), None => return Err(PlayError::NoTopCard) };
+        if !Self::can_play_on_top(&top, card) { return Err(PlayError::IllegalCard); }
+
+        match card.rank {
+            UnoRank::Wild | UnoRank::WildDrawFour => {
+                let chosen = choose_color.ok_or(PlayError::MissingChosenColor)?;
+                if !self.remove_one_card(player, card) { return Err(PlayError::NotOwned); }
+                match card.rank {
+                    UnoRank::Wild => self.apply_wild(card.clone(), chosen),
+                    UnoRank::WildDrawFour => self.apply_wild_draw_four(card.clone(), chosen),
+                    _ => unreachable!(),
+                }
+            }
+            UnoRank::Reverse => {
+                if !self.remove_one_card(player, card) { return Err(PlayError::NotOwned); }
+                self.apply_reverse(card.clone());
+            }
+            UnoRank::Skip => {
+                if !self.remove_one_card(player, card) { return Err(PlayError::NotOwned); }
+                self.apply_skip(card.clone());
+            }
+            UnoRank::DrawTwo => {
+                if !self.remove_one_card(player, card) { return Err(PlayError::NotOwned); }
+                self.apply_draw_two(card.clone());
+            }
+            _ => {
+                if !self.remove_one_card(player, card) { return Err(PlayError::NotOwned); }
+                self.apply_number_play(card.clone());
+            }
+        }
+
+        if self.hands.get(player).map(|h| h.is_empty()).unwrap_or(false) {
+            self.winner = Some(player.to_string());
+        }
+        Ok(())
     }
 }
 
@@ -218,4 +322,13 @@ fn draw_from_deck(deck: &mut Vec<UnoCard>, n: usize) -> Vec<UnoCard> {
         if let Some(c) = deck.pop() { out.push(c) }
     }
     out
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayError {
+    NotYourTurn,
+    IllegalCard,
+    NotOwned,
+    MissingChosenColor,
+    NoTopCard,
 }

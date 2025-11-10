@@ -7,6 +7,9 @@ use crate::{
   types::{UnoPayloadToServer, UnoPayloadToClient, ServerMessage},
 };
 
+use serde_json;
+use axum::extract::ws::Message;
+
 pub async fn uno_handler(
     payload: UnoPayloadToServer,
     app_state: &Arc<AppState>,
@@ -28,11 +31,10 @@ pub async fn uno_handler(
         return public_snapshot_empty(payload.game_id);
     };
 
-    // If there is a pending draw, enforce at start of turn
-    if s.started && s.pending_draw > 0 {
-        if s.current_player() == Some(&payload.player_name) && payload.action != "draw_card" && payload.action != "pass_turn" && payload.action != "play_card" {
-            // we only enforce inside play path; leave as-is if action is unrelated
-        }
+    // Auto-enforce pending draw penalties at the start of the current player's turn.
+    // If this applies, short-circuit and broadcast updated state (no other action this turn).
+    if s.is_players_turn(&payload.player_name) && s.enforce_pending_at_turn_start() {
+        return build_public_update(&payload.game_id, s);
     }
 
     match payload.action.as_str() {
@@ -41,56 +43,37 @@ pub async fn uno_handler(
         }
 
         "draw_card" => {
-            if let Some(c) = s.deck.pop() {
-                if let Some(hand) = s.hand_of_mut(&payload.player_name) {
-                    hand.push(c);
-                }
+            if !s.is_players_turn(&payload.player_name) {
+                return build_public_update(&payload.game_id, s);
             }
-            // no auto-play in MVP
+            let _ = s.draw_one(&payload.player_name);
         }
 
         "pass_turn" => {
-            // if pending draw > 0, force draw and skip was already applied at turn start via s.force_draw_and_skip()
+            if !s.is_players_turn(&payload.player_name) {
+                return build_public_update(&payload.game_id, s);
+            }
             s.advance_turn(1);
         }
 
         "play_card" => {
-            if let (Some(top), Some(card)) = (s.discard_top.clone(), payload.card.clone()) {
-                // Validate playable (classic: match color OR rank OR any wild)
-                let ok = UnoModel::can_play_on_top(&top, &card);
+            if !s.is_players_turn(&payload.player_name) {
+                return build_public_update(&payload.game_id, s);
+            }
 
-                if ok {
-                    // Remove from hand (first matching)
-                    if let Some(hand) = s.hand_of_mut(&payload.player_name) {
-                        if let Some(pos) = hand.iter().position(|c| c == &card) {
-                            hand.remove(pos);
-                        } else {
-                            // no-op if client lied
-                        }
-                    }
+            let Some(card) = payload.card.as_ref() else {
+                return build_public_update(&payload.game_id, s);
+            };
 
-                    match card.rank {
-                        UnoRank::Skip => s.apply_skip(card),
-                        UnoRank::Reverse => s.apply_reverse(card),
-                        UnoRank::DrawTwo => s.apply_draw_two(card),
-                        UnoRank::Wild => {
-                            let chosen = parse_choose(&payload.choose_color);
-                            if let Some(c) = chosen { s.apply_wild(card, c); } else { /* no-op */ }
-                        }
-                        UnoRank::WildDrawFour => {
-                            let chosen = parse_choose(&payload.choose_color);
-                            if let Some(c) = chosen { s.apply_wild_draw_four(card, c); } else { /* no-op if missing */ }
-                        }
-                        _ => s.apply_number_play(card),
-                    }
+            // Parse chosen color for Wild/WDF (non-binding hint semantics)
+            let choose = match card.rank {
+                UnoRank::Wild | UnoRank::WildDrawFour => parse_choose(&payload.choose_color),
+                _ => None,
+            };
 
-                    // UNO win condition
-                    if let Some(hand) = s.hands.get(&payload.player_name) {
-                        if hand.is_empty() {
-                            s.winner = Some(payload.player_name.clone());
-                        }
-                    }
-                }
+            if let Err(_e) = s.play_card_tx(&payload.player_name, card, choose) {
+                // For now, ignore error details; simply return current state. (Task #8 will map errors.)
+                return build_public_update(&payload.game_id, s);
             }
         }
 
@@ -119,8 +102,6 @@ fn parse_choose(s: &Option<String>) -> Option<UnoColor> {
         _ => None,
     }
 }
-
-// --- helpers the ws loop can also call ---
 
 pub fn build_public_update(game_id: &str, s: &UnoModel) -> ServerMessage {
     ServerMessage::Uno(UnoPayloadToClient {
@@ -162,4 +143,22 @@ fn public_snapshot_empty(game_id: String) -> ServerMessage {
         top_discard: None, chosen_color: None, pending_draw: None,
         public_counts: None, hand: None, winner: None,
     })
+}
+
+/// Send each UNO player's private hand to their own socket for this room.
+/// Lives in UNO route layer to keep ws.rs game-agnostic.
+pub async fn dm_uno_private_hands(app_state: Arc<AppState>, game_id: &str) {
+    let rooms = app_state.rooms.read().await;
+    if let Some(room) = rooms.get(game_id) {
+        if let GameType::Uno(ref model) = room.game {
+            for (i, player) in model.players.iter().enumerate() {
+                if let Some(tx) = room.txs.get(i) {
+                    let hand_msg = build_private_hand(game_id, model, player);
+                    if let Ok(text) = serde_json::to_string(&hand_msg) {
+                        let _ = tx.send(Message::Text(text.into()));
+                    }
+                }
+            }
+        }
+    }
 }
