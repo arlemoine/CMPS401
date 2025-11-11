@@ -65,14 +65,12 @@ pub async fn uno_handler(
                 return build_public_update(&payload.game_id, s);
             };
 
-            // Parse chosen color for Wild/WDF (non-binding hint semantics)
             let choose = match card.rank {
                 UnoRank::Wild | UnoRank::WildDrawFour => parse_choose(&payload.choose_color),
                 _ => None,
             };
 
             if let Err(_e) = s.play_card_tx(&payload.player_name, card, choose) {
-                // For now, ignore error details; simply return current state. (Task #8 will map errors.)
                 return build_public_update(&payload.game_id, s);
             }
         }

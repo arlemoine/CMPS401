@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub type PlayerId = String;
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "PascalCase")]
 pub enum UnoColor { Red, Yellow, Green, Blue, Wild }
 
@@ -29,7 +29,7 @@ pub struct UnoModel {
     pub direction: i8,                               // 1 or -1
     pub deck: Vec<UnoCard>,                          // face-down draw pile (top = last)
     pub discard_top: Option<UnoCard>,                // top of discard pile               
-    pub chosen_color: Option<UnoColor>,             // UI hint chosen on Wild/WDF (non-binding; does NOT restrict rank plays)
+    pub chosen_color: Option<UnoColor>,              // Active color chosen on Wild/WDF (constrains color until a non-wild is played)
     pub pending_draw: u8,                            // accumulated penalty
     pub hands: HashMap<PlayerId, Vec<UnoCard>>,      // hidden state per player
     pub winner: Option<PlayerId>,
@@ -147,25 +147,45 @@ impl UnoModel {
         k
     }
 
-    // Classic rule (no color lock): match color OR rank, or play any wild at any time
-    pub fn can_play_on_top(top: &UnoCard, card: &UnoCard) -> bool {
-        matches!(card.rank, UnoRank::Wild | UnoRank::WildDrawFour)
-            || card.color == top.color
-            || card.rank == top.rank
+    // Match rules with wild color lock: after Wild/WDF, the chosen_color constrains color until a non-wild is played
+    pub fn can_play_on_top(top: &UnoCard, chosen: Option<UnoColor>, card: &UnoCard) -> bool {
+        // Wilds are always legal
+        if matches!(card.rank, UnoRank::Wild | UnoRank::WildDrawFour) {
+            return true;
+        }
+
+        match top.rank {
+            UnoRank::Wild | UnoRank::WildDrawFour => {
+                // When the top is a wild, rely on the chosen color if set
+                if let Some(ch) = chosen {
+                    // Only color match matters here
+                    return card.color == ch;
+                }
+                // No chosen color (shouldn't happen) => disallow non-wilds
+                false
+            }
+            _ => {
+                // Normal case: match color or rank
+                card.color == top.color || card.rank == top.rank
+            }
+        }
     }
 
     pub fn apply_number_play(&mut self, card: UnoCard) {
         self.discard_top = Some(card);
+        self.chosen_color = None;
         self.advance_turn(1);
     }
 
     pub fn apply_skip(&mut self, card: UnoCard) {
         self.discard_top = Some(card);
+        self.chosen_color = None;
         self.advance_turn(2);
     }
 
     pub fn apply_reverse(&mut self, card: UnoCard) {
         self.discard_top = Some(card);
+        self.chosen_color = None;
         if self.players.len() == 2 {
             // Reverse acts like Skip in 2-player
             self.advance_turn(2);
@@ -177,6 +197,7 @@ impl UnoModel {
 
     pub fn apply_draw_two(&mut self, card: UnoCard) {
         self.discard_top = Some(card);
+        self.chosen_color = None;
         self.pending_draw = self.pending_draw.saturating_add(2);
         self.advance_turn(1);
     }
@@ -243,7 +264,7 @@ impl UnoModel {
         if !self.is_players_turn(player) { return Err(PlayError::NotYourTurn); }
 
         let top = match &self.discard_top { Some(c) => c.clone(), None => return Err(PlayError::NoTopCard) };
-        if !Self::can_play_on_top(&top, card) { return Err(PlayError::IllegalCard); }
+        if !Self::can_play_on_top(&top, self.chosen_color, card) { return Err(PlayError::IllegalCard); }
 
         match card.rank {
             UnoRank::Wild | UnoRank::WildDrawFour => {

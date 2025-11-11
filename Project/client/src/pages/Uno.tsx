@@ -1,6 +1,18 @@
 // client/src/pages/Uno.tsx
 import { useEffect, useState } from "react";
-import { Button, Stack, Title, Text, Grid, Badge, Group, Paper, Modal, SimpleGrid, Alert } from "@mantine/core";
+import {
+  Button,
+  Stack,
+  Title,
+  Text,
+  Grid,
+  Badge,
+  Group,
+  Paper,
+  Modal,
+  SimpleGrid,
+  Alert,
+} from "@mantine/core";
 import { useParams, useNavigate } from "react-router-dom";
 import { ws, type UnoCard } from "../api/ws";
 import { useStore } from "../state/store";
@@ -30,14 +42,14 @@ const COLOR_MAP: { [key: string]: string } = {
 export default function Uno() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { 
-    playerName, 
-    players, 
-    setPlayers, 
-    setGameId, 
-    setPlayerName, 
+  const {
+    playerName,
+    players,
+    setPlayers,
+    setGameId,
+    setPlayerName,
     clearChatMessages,
-    addChatMessage // ✅ Add this to handle incoming chat messages
+    addChatMessage, // ✅ Add this to handle incoming chat messages
   } = useStore();
 
   const [gameState, setGameState] = useState<UnoGameState>({
@@ -56,19 +68,21 @@ export default function Uno() {
   const [selectedCard, setSelectedCard] = useState<UnoCard | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [pendingWildCard, setPendingWildCard] = useState<UnoCard | null>(null);
+  // Local-only flags for post-draw unplayable/pass state
+  const [mustPassLocal, setMustPassLocal] = useState(false);
+  const [awaitingDraw, setAwaitingDraw] = useState(false);
+  // Track previous hand count and turn index to detect draw result
+  const [prevHandCount, setPrevHandCount] = useState(0);
+  const [prevTurnIdx, setPrevTurnIdx] = useState<number | null>(null);
 
   useEffect(() => {
     ws.connect();
 
-    // ✅ Set the game ID in the store when component mounts
     if (id) {
       setGameId(id);
-      console.log("[Uno] Game ID set:", id);
     }
 
     const unsub = ws.onMessage((msg) => {
-      console.log("[Uno] Received:", msg);
-
       if (msg.type === "Uno") {
         const data = msg.data;
 
@@ -120,7 +134,6 @@ export default function Uno() {
 
       // ✅ Handle chat messages
       if (msg.type === "Chat") {
-        console.log("[Uno] Chat message received:", msg.data);
         addChatMessage({
           player_name: msg.data.player_name,
           chat_message: msg.data.chat_message,
@@ -135,7 +148,6 @@ export default function Uno() {
   const handleStartGame = () => {
     if (!id || !playerName) return;
 
-    console.log("[Uno] Starting game");
     ws.send({
       type: "Uno",
       data: {
@@ -156,7 +168,6 @@ export default function Uno() {
       return;
     }
 
-    console.log(`[Uno] Playing card:`, card);
     ws.send({
       type: "Uno",
       data: {
@@ -167,13 +178,14 @@ export default function Uno() {
       },
     });
 
+    setMustPassLocal(false);
+    setAwaitingDraw(false);
     setSelectedCard(null);
   };
 
   const handlePlayWildWithColor = (color: string) => {
     if (!pendingWildCard || !id || !playerName) return;
 
-    console.log(`[Uno] Playing wild card with color:`, color);
     ws.send({
       type: "Uno",
       data: {
@@ -185,6 +197,8 @@ export default function Uno() {
       },
     });
 
+    setMustPassLocal(false);
+    setAwaitingDraw(false);
     setShowColorPicker(false);
     setPendingWildCard(null);
     setSelectedCard(null);
@@ -193,7 +207,11 @@ export default function Uno() {
   const handleDrawCard = () => {
     if (!id || !playerName) return;
 
-    console.log("[Uno] Drawing card");
+    // Prepare to resolve draw result on next state update
+    setAwaitingDraw(true);
+    setPrevHandCount(gameState.hand.length);
+    setPrevTurnIdx(gameState.current_idx);
+
     ws.send({
       type: "Uno",
       data: {
@@ -205,9 +223,10 @@ export default function Uno() {
   };
 
   const handlePassTurn = () => {
+    setMustPassLocal(false);
+    setAwaitingDraw(false);
     if (!id || !playerName) return;
 
-    console.log("[Uno] Passing turn");
     ws.send({
       type: "Uno",
       data: {
@@ -217,15 +236,51 @@ export default function Uno() {
       },
     });
   };
+  // After main ws effect, derive mustPassLocal and awaitingDraw state from transitions
+  useEffect(() => {
+    // Clear local flags if it's not our turn
+    if (!isMyTurn()) {
+      setMustPassLocal(false);
+      setAwaitingDraw(false);
+      setPrevHandCount(gameState.hand.length);
+      setPrevTurnIdx(gameState.current_idx);
+      return;
+    }
+
+    // If we were awaiting draw resolution, decide whether Pass should be shown
+    if (awaitingDraw) {
+      const handGrew = gameState.hand.length > prevHandCount;
+      const turnChanged =
+        prevTurnIdx !== null && gameState.current_idx !== prevTurnIdx;
+
+      if (turnChanged) {
+        // Turn advanced (e.g., penalty skip or server advanced) -> clear flags
+        setMustPassLocal(false);
+        setAwaitingDraw(false);
+      } else if (handGrew) {
+        // We drew exactly one; if we now have a legal play, no Pass is needed; else require Pass
+        const playableNow = gameState.hand.some((c) => canPlayCard(c));
+        setMustPassLocal(!playableNow);
+        setAwaitingDraw(false);
+      }
+    }
+
+    // Update previous trackers for next tick
+    setPrevHandCount(gameState.hand.length);
+    setPrevTurnIdx(gameState.current_idx);
+  }, [
+    gameState.hand.length,
+    gameState.current_idx,
+    gameState.top_discard,
+    awaitingDraw,
+  ]);
 
   const handleBackToRoom = () => {
     clearChatMessages();
-    console.log("[Uno] Navigating back to match room");
     navigate(`/match/${id}`, { state: { fromBoard: true } });
   };
 
   const handleMainMenu = () => {
-    console.log("[Uno] Leaving game and going to main menu");
     clearChatMessages();
 
     if (id && playerName) {
@@ -246,7 +301,6 @@ export default function Uno() {
     sessionStorage.removeItem("ttt_playerName");
     ws.close();
 
-    console.log("[Uno] State reset, navigating to dashboard");
     navigate("/");
   };
 
@@ -257,8 +311,16 @@ export default function Uno() {
   const getCardDisplay = (card: UnoCard): string => {
     // Convert rank to display format
     const rankMap: { [key: string]: string } = {
-      "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
-      "5": "5", "6": "6", "7": "7", "8": "8", "9": "9",
+      "0": "0",
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "7",
+      "8": "8",
+      "9": "9",
       Skip: "🚫",
       Reverse: "🔄",
       DrawTwo: "+2",
@@ -274,21 +336,41 @@ export default function Uno() {
     return currentPlayer === playerName;
   };
 
+  // Use chosen_color ONLY when the top card is a wild; otherwise use the top card's own color
+  const getActiveColorForTop = (): string | null => {
+    const top = gameState.top_discard;
+    if (!top) return null;
+    if (top.rank === "Wild" || top.rank === "WildDrawFour") {
+      return gameState.chosen_color || null;
+    }
+    return top.color || null;
+  };
+
+  // Match the server legality: wild color lock only applies when the top is a wild
   const canPlayCard = (card: UnoCard): boolean => {
     if (!isMyTurn()) return false;
-    if (!gameState.top_discard) return false;
-
     const top = gameState.top_discard;
+    if (!top) return false;
 
-    // Wild cards can always be played
+    // No plays during a draw penalty
+    if (gameState.pending_draw > 0) return false;
+
+    // Wilds are always playable
     if (card.rank === "Wild" || card.rank === "WildDrawFour") return true;
 
-    // Match color or rank
+    // If the top is a wild, chosen_color (if set) constrains non-wild plays
+    if (top.rank === "Wild" || top.rank === "WildDrawFour") {
+      if (!gameState.chosen_color) return false; // lock not established yet → only wilds allowed
+      return card.color === gameState.chosen_color;
+    }
+
+    // Normal: color OR rank match
     return card.color === top.color || card.rank === top.rank;
   };
 
   const getCurrentPlayerDisplay = () => {
-    if (!gameState.gameStarted || gameState.players.length === 0) return "Waiting...";
+    if (!gameState.gameStarted || gameState.players.length === 0)
+      return "Waiting...";
     return gameState.players[gameState.current_idx] || "Unknown";
   };
 
@@ -316,7 +398,9 @@ export default function Uno() {
                 <Group gap="xs">
                   <Text>{player}</Text>
                   {player === playerName && <Text fw={700}>← YOU</Text>}
-                  <Text c="dimmed">({gameState.public_counts[idx] || 0} cards)</Text>
+                  <Text c="dimmed">
+                    ({gameState.public_counts[idx] || 0} cards)
+                  </Text>
                 </Group>
               </Badge>
             ))}
@@ -330,7 +414,12 @@ export default function Uno() {
                   ⏳ Waiting for players... ({players.length} joined)
                 </Text>
               </Alert>
-              <Button size="lg" color="green" onClick={handleStartGame} disabled={players.length < 2}>
+              <Button
+                size="lg"
+                color="green"
+                onClick={handleStartGame}
+                disabled={players.length < 2}
+              >
                 🎮 Start Game
               </Button>
               <Text size="sm" c="dimmed">
@@ -350,7 +439,9 @@ export default function Uno() {
               >
                 <Group justify="center" gap="xs">
                   <Text size="lg" fw={600}>
-                    {isMyTurn() ? "🎮 YOUR TURN!" : `⏳ ${getCurrentPlayerDisplay()}'s turn`}
+                    {isMyTurn()
+                      ? "🎮 YOUR TURN!"
+                      : `⏳ ${getCurrentPlayerDisplay()}'s turn`}
                   </Text>
                   {gameState.pending_draw > 0 && (
                     <Badge color="red" size="lg">
@@ -381,7 +472,11 @@ export default function Uno() {
                     radius="lg"
                     p="xl"
                     style={{
-                      backgroundColor: getCardColor(gameState.top_discard),
+                      backgroundColor: (() => {
+                        const active = getActiveColorForTop();
+                        if (active) return COLOR_MAP[active] || "#6B7280";
+                        return getCardColor(gameState.top_discard as UnoCard);
+                      })(),
                       color: "white",
                       textAlign: "center",
                       height: 180,
@@ -409,20 +504,34 @@ export default function Uno() {
 
                 {/* Direction indicator */}
                 <Text ta="center" mt="md" size="lg">
-                  {gameState.direction === 1 ? "↻ Clockwise" : "↺ Counter-clockwise"}
+                  {gameState.direction === 1
+                    ? "↻ Clockwise"
+                    : "↺ Counter-clockwise"}
                 </Text>
               </Paper>
 
               {/* Action Buttons */}
               {isMyTurn() && (
-                <Group mt="lg" justify="center">
-                  <Button size="lg" color="blue" onClick={handleDrawCard}>
-                    🃏 Draw Card
-                  </Button>
-                  <Button size="lg" color="orange" onClick={handlePassTurn}>
-                    ⏭️ Pass Turn
-                  </Button>
-                </Group>
+                <Stack mt="lg" align="center" gap="xs">
+                  <Group justify="center">
+                    {gameState.pending_draw > 0 ? (
+                      // Penalty must be resolved; only show Resolve Draw
+                      <Button size="lg" color="red" onClick={handleDrawCard}>
+                        Resolve Draw (+{gameState.pending_draw})
+                      </Button>
+                    ) : mustPassLocal ? (
+                      // After drawing an unplayable card this turn: only Pass is allowed
+                      <Button size="lg" color="orange" onClick={handlePassTurn}>
+                        ⏭️ Pass Turn
+                      </Button>
+                    ) : (
+                      // Normal turn: only Draw is visible (cards remain clickable if playable)
+                      <Button size="lg" color="blue" onClick={handleDrawCard}>
+                        🃏 Draw 1
+                      </Button>
+                    )}
+                  </Group>
+                </Stack>
               )}
 
               {/* Player's Hand */}
@@ -475,8 +584,10 @@ export default function Uno() {
                         }}
                         onMouseEnter={(e) => {
                           if (playable) {
-                            e.currentTarget.style.transform = "translateY(-10px)";
-                            e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.3)";
+                            e.currentTarget.style.transform =
+                              "translateY(-10px)";
+                            e.currentTarget.style.boxShadow =
+                              "0 8px 16px rgba(0,0,0,0.3)";
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -512,10 +623,20 @@ export default function Uno() {
               </Alert>
 
               <Group mt="md">
-                <Button size="lg" color="blue" variant="outline" onClick={handleBackToRoom}>
+                <Button
+                  size="lg"
+                  color="blue"
+                  variant="outline"
+                  onClick={handleBackToRoom}
+                >
                   ← Back to Room
                 </Button>
-                <Button size="lg" color="red" variant="outline" onClick={handleMainMenu}>
+                <Button
+                  size="lg"
+                  color="red"
+                  variant="outline"
+                  onClick={handleMainMenu}
+                >
                   🏠 Main Menu
                 </Button>
               </Group>
@@ -525,7 +646,12 @@ export default function Uno() {
           {/* Navigation buttons */}
           {gameState.gameStarted && !gameState.winner && (
             <Group mt="xl">
-              <Button size="md" color="red" variant="outline" onClick={handleMainMenu}>
+              <Button
+                size="md"
+                color="red"
+                variant="outline"
+                onClick={handleMainMenu}
+              >
                 ❌ Leave Game
               </Button>
             </Group>

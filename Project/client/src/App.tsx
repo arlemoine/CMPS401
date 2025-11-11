@@ -45,7 +45,6 @@ function AppRoutes() {
     });
 
     const offMsg = ws.onMessage((msg: ServerMsg) => {
-      console.log("[App] Global message received:", msg);
 
       switch (msg.type) {
         case "Echo":
@@ -96,7 +95,6 @@ function AppRoutes() {
         }
 
         case "Uno": {
-          console.log("[App] Uno update:", msg.data);
           // Uno component will handle its own state
           break;
         }
