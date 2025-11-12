@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
 use crate::models::uno::model::UnoCard;
 
 // -------------------------------------------------------------
@@ -15,6 +17,7 @@ pub enum ClientMessage {
     TicTacToe(TicTacToePayloadToServer),
     RockPaperScissors(RockPaperScissorsPayloadToServer),
     Uno(UnoPayloadToServer),
+    AirHockey(AirHockeyPayloadToServer),
 }
 
 /// Messages sent from the server to the client.
@@ -27,6 +30,7 @@ pub enum ServerMessage {
     TicTacToe(TicTacToePayloadToClient),
     RockPaperScissors(RockPaperScissorsPayloadToClient),
     Uno(UnoPayloadToClient),
+    AirHockey(AirHockeyPayloadToClient),
 }
 
 // -------------------------------------------------------------
@@ -59,28 +63,25 @@ pub struct ChatPayload {
     pub time: String,
 }
 
-/// ✅ FIXED: Payload sent TO the client (board as numbers, optional fields)
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TicTacToePayloadToClient {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub board: Option<Vec<Vec<i32>>>, // ✅ Changed from Vec<String> to Vec<Vec<i32>>
+    pub board: Option<Vec<Vec<i32>>>,
     
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub whos_turn: Option<String>, // ✅ Now uses player name instead of "x"/"o"
+    pub whos_turn: Option<String>,
     
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>, // "IN_PROGRESS", "gameover_x", "gameover_o", "gameover_draw"
+    pub status: Option<String>,
 }
 
-/// ✅ FIXED: Payload received FROM the client
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TicTacToePayloadToServer {
-    pub game_id: String, // ✅ Required field
+    pub game_id: String,
     pub whos_turn: String, // Player name making the move
     pub choice: String, // "A1", "B2", etc.
 }
 
-/// Payload received FROM the client for RockPaperScissors
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct RockPaperScissorsPayloadToServer {
     pub game_id: String,
@@ -89,7 +90,6 @@ pub struct RockPaperScissorsPayloadToServer {
     pub choice: Option<String>, // optional so clients may request latest state
 }
 
-/// Payload sent TO the client for RockPaperScissors
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct RockPaperScissorsPayloadToClient {
     pub game_id: String,
@@ -108,7 +108,6 @@ pub struct RockPaperScissorsPayloadToClient {
     pub message: Option<String>,
 }
 
-/// Payload received FROM the client for Uno
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct UnoPayloadToServer {
     pub game_id: String, /// Game session identifier
@@ -129,7 +128,7 @@ pub struct UnoPayloadToServer {
 /// Payload sent TO the client for Uno
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct UnoPayloadToClient {
-    pub game_id: String,     /// Game session identifier
+    pub game_id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub players: Option<Vec<String>>, /// Seat order of players (public names). Index corresponds to turn order.
@@ -157,4 +156,49 @@ pub struct UnoPayloadToClient {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub winner: Option<String>,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct AirHockeyPayloadToServer {
+    pub action: String, // "move_paddle", "request_state"
+    pub game_id: String,
+    pub player_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub position: Option<Vector2>, // { x: f32, y: f32 }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub velocity: Option<Vector2>, // { x: f32, y: f32 }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<f64>,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct Vector2 {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Clone, Serialize, Debug)]
+pub struct AirHockeyPayloadToClient {
+    pub event: String, // "update", "p1_score", "p2_score", "game_over_winner_p1", "game_over_winner_p2"
+    pub game_id: String,
+    pub timestamp: f64, /// Current timestamp for interpolation / latency compensation
+    pub paddles: HashMap<String, PaddleState>, // player_id => state
+    pub puck: PuckState,
+    pub score: HashMap<String, u8>, // player_id => score
+}
+
+#[derive(Clone, Serialize, Debug)]
+pub struct PaddleState {
+    pub x: f32,
+    pub y: f32,
+    pub vx: f32,
+    pub vy: f32,
+}
+
+#[derive(Clone, Serialize, Debug)]
+pub struct PuckState {
+    pub x: f32,
+    pub y: f32,
+    pub vx: f32,
+    pub vy: f32,
 }

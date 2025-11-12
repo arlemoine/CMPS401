@@ -560,6 +560,126 @@ General rules enforced by backend:
 
 ---
 
+## 7. Air Hockey
+
+Air Hockey is a real-time, two-player game where players control paddles to hit a puck. The backend is authoritative for puck physics, collisions, and scoring. Clients send paddle positions and velocities, or optionally request the full authoritative game state.
+
+All Air Hockey messages use the standard JSON envelope:
+
+```json
+{
+  "type": "AirHockey",
+  "data": { ... }
+}
+```
+
+### 7.1 Client → Server Messages
+
+#### 7.1.1 Paddle Movement
+
+Sent continuously while a player moves their paddle. Positions and velocities are float values, and `timestamp` is a Unix timestamp in seconds with fractional sub-second precision.
+
+```json
+{
+  "type": "AirHockey",
+  "data": {
+    "action": "move_paddle",
+    "game_id": "ah001",
+    "player_id": "p1",
+    "position": { "x": 512.4, "y": 340.2 },
+    "velocity": { "x": 3.1, "y": -0.4 },
+    "timestamp": 1731429871.235
+  }
+}
+```
+
+#### 7.1.2 Request Full Game State
+
+Sent when the client wants a complete snapshot (e.g., on reconnect). Optional fields are omitted.
+
+```json
+{
+  "type": "AirHockey",
+  "data": {
+    "action": "request_state",
+    "game_id": "ah001",
+    "player_id": "p1"
+  }
+}
+```
+
+- `position`, `velocity`, and `timestamp` are omitted because they are not needed for a full state request.
+
+### 7.2 Server → Client Messages
+
+The server broadcasts the full game state periodically. It includes paddle positions and velocities, puck state, score, and optional events.
+
+```json
+{
+  "type": "AirHockey",
+  "data": {
+    "event":"update",
+    "game_id": "ah001",
+    "timestamp": 1731429871.250,
+    "paddles": {
+      "p1": { "x": 512.4, "y": 340.2, "vx": 3.1, "vy": -0.4 },
+      "p2": { "x": 490.0, "y": 320.1, "vx": 0.0, "vy": 1.2 }
+    },
+    "puck": { "x": 640.0, "y": 360.0, "vx": 2.5, "vy": -3.1 },
+    "score": { "p1": 2, "p2": 3 }
+  }
+}
+```
+
+- "paddles" is a map from player_id → PaddleState, where each PaddleState contains x, y, vx, vy.
+
+#### 7.2.1 Game Events
+
+Optional discrete events are included only when relevant:
+
+```json
+{
+  "type": "AirHockey",
+  "data": {
+    "event":"p2_score",
+    "game_id": "ah001",
+    "timestamp": 1731429882.378,
+    "paddles": {
+      "p1": { "x": 512.4, "y": 340.2, "vx": 3.1, "vy": -0.4 },
+      "p2": { "x": 490.0, "y": 320.1, "vx": 0.0, "vy": 1.2 }
+    },
+    "puck": { "x": 640.0, "y": 360.0, "vx": 2.5, "vy": -3.1 },
+    "score": { "p1": 2, "p2": 4 }
+  }
+}
+```
+
+```json
+{
+  "type": "AirHockey",
+  "data": {
+    "event":"game_over_winner_p2",
+    "game_id": "ah001",
+    "timestamp": 1731429882.352,
+    "paddles": {
+      "p1": { "x": 512.4, "y": 340.2, "vx": 3.1, "vy": -0.4 },
+      "p2": { "x": 490.0, "y": 320.1, "vx": 0.0, "vy": 1.2 }
+    },
+    "puck": { "x": 640.0, "y": 360.0, "vx": 2.5, "vy": -3.1 },
+    "score": { "p1": 2, "p2": 4 }
+  }
+}
+```
+
+### 7.3 Notes
+
+- Paddle movement messages are **frequent and incremental**, allowing smooth interpolation on the client.
+- `timestamp` is used for latency compensation and client-side interpolation.
+- Backend is authoritative for puck physics, collisions, and scoring.
+- Clients should implement **local prediction** for their own paddle and **interpolation** for opponent paddles and the puck to reduce perceived lag.
+
+---
+
 ## Adding New Message Types
 
 1. **Define the new message type name and its data schema.**
