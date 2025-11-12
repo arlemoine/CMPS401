@@ -167,8 +167,6 @@ pub struct AirHockeyPayloadToServer {
     pub position: Option<Vector2>, // { x: f32, y: f32 }
     #[serde(skip_serializing_if = "Option::is_none")]
     pub velocity: Option<Vector2>, // { x: f32, y: f32 }
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timestamp: Option<f64>,
 }
 
 #[derive(Clone, Deserialize, Debug)]

@@ -588,7 +588,6 @@ Sent continuously while a player moves their paddle. Positions and velocities ar
     "player_id": "p1",
     "position": { "x": 512.4, "y": 340.2 },
     "velocity": { "x": 3.1, "y": -0.4 },
-    "timestamp": 1731429871.235
   }
 }
 ```
@@ -608,7 +607,7 @@ Sent when the client wants a complete snapshot (e.g., on reconnect). Optional fi
 }
 ```
 
-- `position`, `velocity`, and `timestamp` are omitted because they are not needed for a full state request.
+- `position` and `velocity` are omitted because they are not needed for a full state request.
 
 ### 7.2 Server → Client Messages
 
