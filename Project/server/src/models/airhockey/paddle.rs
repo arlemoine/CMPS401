@@ -1,4 +1,3 @@
-// models/airhockey/paddle.rs
 use crate::models::airhockey::config::*;
 use crate::types::Vector2;
 

@@ -13,6 +13,7 @@ pub enum GameType {
     TicTacToe(TicTacToeModel),
     RockPaperScissors(RockPaperScissorsModel),
     Uno(UnoModel),
+    AirHockey(AirHockeyModel),
     // List other game types here
 }
 

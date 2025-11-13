@@ -1,12 +1,11 @@
 use crate::models::airhockey::{paddle::Paddle, puck::Puck, table::Table};
-use crate::models::airhockey::config::*;
 
 #[derive(Debug, Clone)]
 pub enum CollisionType {
     None,
-    Wall,            // Collision with a vertical or horizontal wall
-    Paddle(u8),      // Collided with paddle (player number)
-    Goal(u8),        // Collided with goal area (player number who scored)
+    Wall, // Collision with a vertical or horizontal wall
+    Paddle(u8), // Collided with paddle (player number)
+    Goal(u8), // Collided with goal area (player number who scored)
 }
 
 pub fn broad_phase(puck: &Puck, table: &Table, paddles: &std::collections::HashMap<u8, Paddle>) -> bool {
@@ -40,7 +39,7 @@ pub fn narrow_phase(
     puck: &Puck,
     table: &Table,
 ) -> CollisionType {
-    // --- Wall collision ---
+    // Wall collision
     if puck.position.x - puck.radius <= 0.0 || puck.position.x + puck.radius >= table.width {
         return CollisionType::Wall;
     }
@@ -49,7 +48,7 @@ pub fn narrow_phase(
         return CollisionType::Wall;
     }
 
-    // --- Goal detection ---
+    // Goal detection
     if puck.position.y - puck.radius <= 0.0 {
         // Top goal → player 2 scores
         return CollisionType::Goal(2);
@@ -60,7 +59,7 @@ pub fn narrow_phase(
         return CollisionType::Goal(1);
     }
 
-    // --- Paddle collisions ---
+    // Paddle collisions
     for (player_num, paddle) in table.paddles.iter() {
         let dx = puck.position.x - paddle.position.x;
         let dy = puck.position.y - paddle.position.y;
