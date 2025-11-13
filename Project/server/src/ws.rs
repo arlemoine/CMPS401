@@ -13,6 +13,7 @@ use crate::{models::appstate::AppState};
 use crate::types::{ClientMessage, EchoPayload, ServerMessage};
 
 use crate::routes::{
+    airhockey_handler::airhockey_handler,
     echo_handler::echo_handler,
     gameroom_handler::gameroom_handler,
     chat_handler::chat_handler,
@@ -116,6 +117,10 @@ pub async fn handle_socket(socket: WebSocket, app_state: Arc<AppState>) {
                         if let Some(room_id) = &*current_room.read().await {
                             dm_uno_private_hands(app_state.clone(), room_id).await;
                         }
+                    }
+                    ClientMessage::AirHockey(payload) => {
+                        let response = airhockey_handler(payload, &app_state, current_room.clone()).await;
+                        broadcast_to_room(response, &app_state, &current_room).await;
                     }
                     other_variant => {
                         let err = format!(

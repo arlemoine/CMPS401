@@ -2,6 +2,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use axum::extract::ws::Message;
 
 use crate::models::{
+    airhockey::model::AirHockeyModel,
     rockpaperscissors::model::RockPaperScissorsModel,
     tictactoe::model::TicTacToeModel,
     uno::model::UnoModel,
