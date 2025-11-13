@@ -1,4 +1,4 @@
-# WebSocket Message Protocol for Tic-Tac-Toe & Rock-Paper-Scissors
+# WebSocket Message Protocol For Frontend-Backend Communication
 
 ## Purpose
 
@@ -22,12 +22,13 @@ Direction is implied by context:
 
 ## Core Message Types
 
-1. Echo
-2. GameRoom
-3. Chat
-4. TicTacToe
-5. RockPaperScissors
-6. Uno
+1. [Echo](#1-echo)
+2. [GameRoom](#2-gameroom)
+3. [Chat](#3-chat)
+4. [TicTacToe](#4-tictactoe)
+5. [RockPaperScissors](#5-rockpaperscissors)
+6. [Uno](#6-uno)
+7. [Air Hockey](#7-air-hockey)
 
 ---
 
@@ -449,37 +450,78 @@ Wild and WildDrawFour require the `choose_color` field:
 ##### Start game
 
 ```json
-{"type":"Uno","data":{"action":"start","game_id":"room123","player_name":"Alice"}}
+{
+  "type": "Uno",
+  "data": { "action": "start", "game_id": "room123", "player_name": "Alice" }
+}
 ```
 
 ##### Play a card
 
 ```json
-{"type":"Uno","data":{"action":"play_card","game_id":"room123","player_name":"Alice","card":{"color":"Red","rank":"5"}}}
+{
+  "type": "Uno",
+  "data": {
+    "action": "play_card",
+    "game_id": "room123",
+    "player_name": "Alice",
+    "card": { "color": "Red", "rank": "5" }
+  }
+}
 ```
 
 ##### Play Wild
 
 ```json
-{"type":"Uno","data":{"action":"play_card","game_id":"room123","player_name":"Alice","card":{"color":"Wild","rank":"Wild"},"choose_color":"Blue"}}
+{
+  "type": "Uno",
+  "data": {
+    "action": "play_card",
+    "game_id": "room123",
+    "player_name": "Alice",
+    "card": { "color": "Wild", "rank": "Wild" },
+    "choose_color": "Blue"
+  }
+}
 ```
 
 ##### Draw a card
 
 ```json
-{"type":"Uno","data":{"action":"draw_card","game_id":"room123","player_name":"Alice"}}
+{
+  "type": "Uno",
+  "data": {
+    "action": "draw_card",
+    "game_id": "room123",
+    "player_name": "Alice"
+  }
+}
 ```
 
 ##### Pass turn
 
 ```json
-{"type":"Uno","data":{"action":"pass_turn","game_id":"room123","player_name":"Alice"}}
+{
+  "type": "Uno",
+  "data": {
+    "action": "pass_turn",
+    "game_id": "room123",
+    "player_name": "Alice"
+  }
+}
 ```
 
 ##### Request state
 
 ```json
-{"type":"Uno","data":{"action":"request_state","game_id":"room123","player_name":"Alice"}}
+{
+  "type": "Uno",
+  "data": {
+    "action": "request_state",
+    "game_id": "room123",
+    "player_name": "Alice"
+  }
+}
 ```
 
 #### Server → Client: Public Game State Broadcast
@@ -587,7 +629,7 @@ Sent continuously while a player moves their paddle. Positions and velocities ar
     "game_id": "ah001",
     "player_id": "p1",
     "position": { "x": 512.4, "y": 340.2 },
-    "velocity": { "x": 3.1, "y": -0.4 },
+    "velocity": { "x": 3.1, "y": -0.4 }
   }
 }
 ```
@@ -617,9 +659,9 @@ The server broadcasts the full game state periodically. It includes paddle posit
 {
   "type": "AirHockey",
   "data": {
-    "event":"update",
+    "event": "update",
     "game_id": "ah001",
-    "timestamp": 1731429871.250,
+    "timestamp": 1731429871.25,
     "paddles": {
       "p1": { "x": 512.4, "y": 340.2, "vx": 3.1, "vy": -0.4 },
       "p2": { "x": 490.0, "y": 320.1, "vx": 0.0, "vy": 1.2 }
@@ -640,7 +682,7 @@ Optional discrete events are included only when relevant:
 {
   "type": "AirHockey",
   "data": {
-    "event":"p2_score",
+    "event": "p2_score",
     "game_id": "ah001",
     "timestamp": 1731429882.378,
     "paddles": {
@@ -657,7 +699,7 @@ Optional discrete events are included only when relevant:
 {
   "type": "AirHockey",
   "data": {
-    "event":"game_over_winner_p2",
+    "event": "game_over_winner_p2",
     "game_id": "ah001",
     "timestamp": 1731429882.352,
     "paddles": {
