@@ -1,9 +1,5 @@
-// models/airhockey/model.rs
-
 use std::collections::HashMap;
 use crate::models::airhockey::{
-    paddle::Paddle,
-    puck::Puck,
     collision::{CollisionType, broad_phase, narrow_phase, reflect_wall, reflect_paddle},
     table::Table,
 };
@@ -12,15 +8,22 @@ use crate::types::Vector2;
 #[derive(Debug, Clone)]
 pub struct AirHockeyModel {
     pub table: Table,
+    pub players: HashMap<u8, String>,
 }
 
 impl AirHockeyModel {
     /// Create a new AirHockeyModel with a fresh table and two paddles
-    pub fn new() -> Self {
-        let mut table = Table::new();
+    pub fn new(player1: String, player2: String) -> Self {
+        let table = Table::new();
+        let mut players = HashMap::new();
+        players.insert(1, player1);
+        players.insert(2, player2);
 
         // Paddles are already created in Table::new with player numbers 1 and 2
-        Self { table }
+        Self { 
+            table,
+            players, 
+        }
     }
 
     /// Apply input to a paddle (player_number = 1 or 2)

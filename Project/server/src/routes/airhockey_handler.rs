@@ -1,94 +1,115 @@
-// routes/airhockey_handler.rs
-
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use chrono::Utc;
-use crate::types::{ServerMessage, AirHockeyPayloadToClient, AirHockeyPayloadToServer};
-use crate::models::gameroom::{GameRoom, GameType};
-use crate::models::airhockey::model::{AirHockeyModel, PlayerSlot};
-use crate::models::appstate::AppState;
 
-/// Handles incoming Air Hockey messages from clients
+use crate::{
+    models::{
+        gameroom::{GameType},
+    },
+    types::{
+        AirHockeyPayloadToServer,
+        AirHockeyPayloadToClient,
+        PaddleState,
+        PuckState,
+        ServerMessage,
+    },
+    models::appstate::AppState,
+};
+
+use tokio::sync::RwLock;
+
 pub async fn airhockey_handler(
     payload: AirHockeyPayloadToServer,
-    app_state: &Arc<AppState>,
+    state: &Arc<AppState>,
     _current_room: Arc<RwLock<Option<String>>>,
 ) -> ServerMessage {
-    let game_id = payload.game_id.clone();
+    let mut rooms = state.rooms.write().await;
 
-    // Get mutable room
-    let mut rooms = app_state.rooms.write().await;
-    let room = match rooms.get_mut(&game_id) {
-        Some(r) => r,
-        None => {
-            eprintln!("[AirHockey] Room not found: {}", game_id);
-            return ServerMessage::AirHockey(AirHockeyPayloadToClient {
-                event: "room_not_found".to_string(),
-                game_id,
-                timestamp: 0.0,
-                paddles: Default::default(),
-                puck: Default::default(),
-                score: Default::default(),
-            });
-        }
+    // Get the corresponding room
+    let Some(room) = rooms.get_mut(&payload.game_id) else {
+        return ServerMessage::Echo(crate::types::EchoPayload {
+            message: format!("No AirHockey room found for {}", payload.game_id),
+        });
     };
 
-    // Extract AirHockey model
-    let game = match &mut room.game {
-        GameType::AirHockey(m) => m,
-        _ => {
-            eprintln!("[AirHockey] Wrong game type in room: {}", game_id);
-            return ServerMessage::AirHockey(AirHockeyPayloadToClient {
-                event: "wrong_game_type".to_string(),
-                game_id,
-                timestamp: 0.0,
-                paddles: Default::default(),
-                puck: Default::default(),
-                score: Default::default(),
-            });
-        }
+    // Make sure it’s actually an AirHockey room
+    let GameType::AirHockey(model) = &mut room.game else {
+        return ServerMessage::Echo(crate::types::EchoPayload {
+            message: format!("Room {} is not an AirHockey game", payload.game_id),
+        });
     };
 
-    // Assign players if not already assigned
-    if !game.player_slots.contains_key(&PlayerSlot::Player1) && !room.users.is_empty() {
-        let p1 = room.users[0].clone();
-        game.assign_player(p1);
-    }
-    if !game.player_slots.contains_key(&PlayerSlot::Player2) && room.users.len() > 1 {
-        let p2 = room.users[1].clone();
-        game.assign_player(p2);
-    }
+    // Determine player number (1 or 2)
+    let player_number = model
+        .players
+        .iter()
+        .find_map(|(num, id)| if *id == payload.player_id { Some(*num) } else { None });
 
-    // Handle payload actions
-    if payload.action == "move_paddle" {
-        if let (Some(pos), Some(vel)) = (payload.position, payload.velocity) {
-            // Map player_id to player_number (1 or 2)
-            if let Some(player_number) = game.player_slots.iter()
-                .find_map(|(slot, id)| {
-                    if id == &payload.player_id {
-                        Some(match slot {
-                            PlayerSlot::Player1 => 1,
-                            PlayerSlot::Player2 => 2,
-                        })
-                    } else { None }
-                }) 
-            {
-                game.update_paddle(player_number, Some(pos), Some(vel));
+    match payload.action.as_str() {
+        "move_paddle" => {
+            if let Some(player_number) = player_number {
+                model.update_paddle(
+                    player_number,
+                    payload.position.clone(),
+                    payload.velocity.clone(),
+                );
             }
+
+            // Update physics
+            model.tick(0.016);
+        }
+
+        "request_state" => {
+            // Do nothing; just return state below
+        }
+
+        other => {
+            return ServerMessage::Echo(crate::types::EchoPayload {
+                message: format!("Unknown AirHockey action: {}", other),
+            });
         }
     }
 
-    // Tick the game
-    let dt = 1.0 / 60.0;
-    game.tick(dt as f32);
+    // Prepare updated state for all clients
+    let paddles = model
+        .table
+        .paddles
+        .iter()
+        .map(|(num, paddle)| {
+            let player_id = model.players.get(num).unwrap().clone();
+            (
+                player_id,
+                PaddleState {
+                    x: paddle.position.x,
+                    y: paddle.position.y,
+                    vx: paddle.velocity.x,
+                    vy: paddle.velocity.y,
+                },
+            )
+        })
+        .collect();
 
-    // Build server payload
+    let puck = &model.table.puck;
+    let score = model
+        .table
+        .score
+        .iter()
+        .map(|(num, val)| {
+            let player_id = model.players.get(num).unwrap().clone();
+            (player_id, *val)
+        })
+        .collect();
+
     ServerMessage::AirHockey(AirHockeyPayloadToClient {
-        event: "update".to_string(),
-        game_id: game_id.clone(),
-        timestamp: Utc::now().timestamp_millis() as f64 / 1000.0,
-        paddles: game.table.paddles.clone(),
-        puck: game.table.puck.clone(),
-        score: game.table.score.clone(),
+        event: "update".into(),
+        game_id: payload.game_id.clone(),
+        timestamp: Utc::now().timestamp_millis() as f64,
+        paddles,
+        puck: PuckState {
+            x: puck.position.x,
+            y: puck.position.y,
+            vx: puck.velocity.x,
+            vy: puck.velocity.y,
+        },
+        score,
     })
 }

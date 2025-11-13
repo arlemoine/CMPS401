@@ -26,7 +26,7 @@ pub struct Table {
     // Resource setup
     pub puck: Puck,
     pub paddles: HashMap<u8, Paddle>, // player number -> paddle
-    pub score: HashMap<u8, u8>,       // player number -> score
+    pub score: HashMap<u8, u8>, // player number -> score
 }
 
 impl Table {
@@ -75,8 +75,6 @@ impl Table {
 
         // Update paddles
         self.update_paddles(dt);
-
-        // TODO: collision handling goes here
 
         // Check scoring
         if let Some(scoring_player) = self.check_goal() {
