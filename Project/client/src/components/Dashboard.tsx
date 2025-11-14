@@ -19,24 +19,6 @@ const games = [
     gameType: "uno" as const,
   },
   {
-    name: "Memory Match",
-    image: "https://cdn-icons-png.flaticon.com/512/1688/1688400.png",
-    path: "/tic-tac-toe",
-    gameType: null,
-  },
-  {
-    name: "Flappy Bird",
-    image: "https://cdn-icons-png.flaticon.com/512/743/743007.png",
-    path: "/tic-tac-toe",
-    gameType: null,
-  },
-  {
-    name: "2048",
-    image: "https://cdn-icons-png.flaticon.com/512/906/906175.png",
-    path: "/tic-tac-toe",
-    gameType: null,
-  },
-  {
     name: "Rock Paper Scissors",
     image: "https://cdn-icons-png.flaticon.com/512/1048/1048949.png",
     path: "/createjoin",
@@ -87,7 +69,7 @@ const Dashboard: React.FC = () => {
   return (
     <div
       style={{
-        minHeight: "80vh",
+        minHeight: "40vh",
         paddingLeft: "40px",
         paddingRight: "40px",
         paddingTop: "10px",
