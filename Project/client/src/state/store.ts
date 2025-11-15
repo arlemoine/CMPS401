@@ -1,3 +1,4 @@
+// client/src/state/store.ts
 import { create } from "zustand";
 
 interface ChatMessage {
@@ -6,6 +7,9 @@ interface ChatMessage {
   time: string;
 }
 
+// ✅ UPDATED: Added "uno" to GameType
+type GameType = "tictactoe" | "rockpaperscissors" | "uno" | null;
+
 interface Store {
   playerName: string;
   setPlayerName: (name: string) => void;
@@ -13,7 +17,10 @@ interface Store {
   gameId: string | null;
   setGameId: (id: string | null) => void;
 
-  players: string[]; // ✅ keeps track of all players in the room
+  gameType: GameType;
+  setGameType: (type: GameType) => void;
+
+  players: string[];
   addPlayer: (player: string) => void;
   removePlayer: (player: string) => void;
   setPlayers: (players: string[]) => void;
@@ -21,7 +28,6 @@ interface Store {
   chatMessages: ChatMessage[];
   addChatMessage: (msg: ChatMessage) => void;
   clearChatMessages: () => void;
-  
 
   board: number[][];
   setBoard: (board: number[][]) => void;
@@ -36,16 +42,17 @@ interface Store {
 export const useStore = create<Store>((set) => ({
   playerName: sessionStorage.getItem("ttt_playerName") || "",
   setPlayerName: (name) => {
-    // ✅ Save to sessionStorage so each tab maintains its own identity
     sessionStorage.setItem("ttt_playerName", name);
     set({ playerName: name });
   },
 
-
   gameId: null,
   setGameId: (id) => set({ gameId: id }),
 
-  players: [], // ✅ store both players
+  gameType: null,
+  setGameType: (type) => set({ gameType: type }),
+
+  players: [],
   addPlayer: (player) =>
     set((state) =>
       state.players.includes(player)
@@ -61,7 +68,7 @@ export const useStore = create<Store>((set) => ({
   chatMessages: [],
   addChatMessage: (msg) =>
     set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
-  clearChatMessages: () => set({ chatMessages: [] }), 
+  clearChatMessages: () => set({ chatMessages: [] }),
 
   board: [
     [0, 0, 0],

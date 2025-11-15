@@ -9,12 +9,15 @@ use crate::models::{
     gameroom::{GameRoom, GameType},
     rockpaperscissors::model::RockPaperScissorsModel,
     tictactoe::model::TicTacToeModel,
+    uno::model::UnoModel,
+    uno::model::UnoColor,
 };
 use crate::types::{
     GameRoomPayload,
     RockPaperScissorsPayloadToClient,
     ServerMessage,
     TicTacToePayloadToClient,
+    UnoPayloadToClient,
 };
 
 /// Handles join/leave operations for game rooms.
@@ -49,6 +52,7 @@ pub async fn handle_join(
     let game_type = match payload.game.as_str() {
         "tictactoe" => GameType::TicTacToe(TicTacToeModel::new()),
         "rockpaperscissors" => GameType::RockPaperScissors(RockPaperScissorsModel::new()),
+        "uno" => GameType::Uno(UnoModel::new()),
         other => {
             eprintln!("Unknown game type requested: {}", other);
             return ServerMessage::GameRoom(payload);
@@ -80,11 +84,12 @@ pub async fn handle_join(
     // Clone the complete player list
     let all_players = room.users.clone();
     
-    // ✅ If we now have 2 players, initialize the game and send initial state
-    let should_start_game = all_players.len() == 2;
-    let initial_game_state: Option<ServerMessage> = if should_start_game {
-        match &mut room.game {
-            GameType::TicTacToe(game) => {
+    // ✅ Build a lobby/initial snapshot to broadcast
+    // - For TicTacToe and RPS: only when exactly 2 players
+    // - For Uno: on every join (so FE always sees up-to-date lobby state and can start when players.len() >= 2)
+    let initial_game_state: Option<ServerMessage> = match &mut room.game {
+        GameType::TicTacToe(game) => {
+            if all_players.len() == 2 {
                 game.player1_name = Some(all_players[0].clone());
                 game.player2_name = Some(all_players[1].clone());
 
@@ -98,8 +103,10 @@ pub async fn handle_join(
                     whos_turn: Some(all_players[0].clone()), // Player 1 starts
                     status: Some("IN_PROGRESS".to_string()),
                 }))
-            }
-            GameType::RockPaperScissors(game) => {
+            } else { None }
+        }
+        GameType::RockPaperScissors(game) => {
+            if all_players.len() == 2 {
                 game.player1_name = Some(all_players[0].clone());
                 game.player2_name = Some(all_players[1].clone());
                 game.reset_round();
@@ -121,10 +128,53 @@ pub async fn handle_join(
                         message: Some("Both players joined. Make your selection!".to_string()),
                     },
                 ))
+            } else { None }
+        }
+        GameType::Uno(game) => {
+            // Register current players in the Uno model
+            for player in &all_players {
+                if !game.players.contains(player) {
+                    game.add_player(player);
+                }
+            }
+
+            if game.started {
+                // If a round is already in progress, emit the current game snapshot
+                Some(ServerMessage::Uno(UnoPayloadToClient {
+                    game_id: payload.game_id.clone(),
+                    players: Some(all_players.clone()),
+                    current_idx: Some(game.current_idx as i32),
+                    direction: Some(game.direction),
+                    top_discard: game.discard_top.clone(),
+                    chosen_color: game.chosen_color.as_ref().map(|c| match c {
+                        UnoColor::Red => "Red".to_string(),
+                        UnoColor::Yellow => "Yellow".to_string(),
+                        UnoColor::Green => "Green".to_string(),
+                        UnoColor::Blue => "Blue".to_string(),
+                        UnoColor::Wild => "Wild".to_string(),
+                    }),
+                    pending_draw: Some(game.pending_draw),
+                    public_counts: Some(game.public_counts()),
+                    hand: None,
+                    winner: game.winner.clone(),
+                }))
+            } else {
+                // Otherwise, emit a lobby snapshot so FE can enable Start when players.len() >= 2
+                let counts = vec![0u8; all_players.len()];
+                Some(ServerMessage::Uno(UnoPayloadToClient {
+                    game_id: payload.game_id.clone(),
+                    players: Some(all_players.clone()),
+                    current_idx: Some(0),
+                    direction: Some(1),
+                    top_discard: None,
+                    chosen_color: None,
+                    pending_draw: Some(0),
+                    public_counts: Some(counts),
+                    hand: None,
+                    winner: None,
+                }))
             }
         }
-    } else {
-        None
     };
     
     drop(room_guard);
@@ -249,6 +299,40 @@ async fn handle_reset(
                     for tx in &room.txs {
                         let _ = tx.send(Message::Text(serialized.clone().into()));
                     }
+                }
+            }
+            
+            GameType::Uno(model) => {
+                // Reset UNO model to lobby state and preserve current room players
+                *model = UnoModel::new();
+                let players = room.users.clone();
+                for p in &players { model.add_player(p); }
+
+                println!(
+                    "[GameRoom] UNO game reset. Players: {:?}",
+                    players
+                );
+
+                // Broadcast a fresh lobby snapshot so FE can start when players.len() >= 2
+                let counts = vec![0u8; players.len()];
+                let payload_uno = UnoPayloadToClient {
+                    game_id: payload.game_id.clone(),
+                    players: Some(players.clone()),
+                    current_idx: Some(0),
+                    direction: Some(1),
+                    top_discard: None,
+                    chosen_color: None,
+                    pending_draw: Some(0),
+                    public_counts: Some(counts),
+                    hand: None,
+                    winner: None,
+                };
+
+                let game_msg = ServerMessage::Uno(payload_uno);
+                let serialized = serde_json::to_string(&game_msg).unwrap();
+
+                for tx in &room.txs {
+                    let _ = tx.send(Message::Text(serialized.clone().into()));
                 }
             }
         }

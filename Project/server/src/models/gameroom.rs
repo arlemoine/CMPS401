@@ -4,12 +4,14 @@ use axum::extract::ws::Message;
 use crate::models::{
     rockpaperscissors::model::RockPaperScissorsModel,
     tictactoe::model::TicTacToeModel,
+    uno::model::UnoModel,
 };
 
 #[derive(Debug)]
 pub enum GameType {
     TicTacToe(TicTacToeModel),
     RockPaperScissors(RockPaperScissorsModel),
+    Uno(UnoModel),
     // List other game types here
 }
 

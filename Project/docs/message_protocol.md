@@ -27,6 +27,7 @@ Direction is implied by context:
 3. Chat
 4. TicTacToe
 5. RockPaperScissors
+6. Uno
 
 ---
 
@@ -58,7 +59,7 @@ Used for connectivity tests and server-issued informative or error messages (e.g
 
 ### 2. GameRoom
 
-Join, leave, or reset a game room. If joining a non-existent room it is created. Supported `game` values: `tictactoe`, `rockpaperscissors`.
+Join, leave, or reset a game room. If joining a non-existent room it is created. Supported `game` values: `tictactoe`, `rockpaperscissors`, `uno`.
 
 Actions:
 
@@ -403,6 +404,159 @@ Winner: player name or "tie".
 ```
 
 Reset: use `GameRoom` with `action: "reset"` and `game: "rockpaperscissors"`.
+
+---
+
+### 6. Uno
+
+Uno is a turn-based multiplayer card game. The backend is authoritative: it validates all moves, enforces turn order, rejects illegal plays, applies card effects (e.g. skip, draw two), and broadcasts full public state after each action.
+
+All Uno messages use the same envelope used by other games:
+
+```json
+{
+  "type": "Uno",
+  "data": { ... }
+}
+```
+
+#### Client → Server Actions
+
+- `start` — begin the game and deal cards
+- `play_card` — attempt to play a card
+- `draw_card` — draw exactly one card
+- `pass_turn` — voluntarily end your turn
+- `call_uno` — declare UNO when you have one card left
+- `request_state` — fetch the most recent public game state
+
+#### Card Format
+
+```json
+{ "color": "Red", "rank": "5" }
+```
+
+Colors: `Red`, `Yellow`, `Green`, `Blue`, `Wild`  
+Ranks: `0`–`9`, `Skip`, `Reverse`, `DrawTwo`, `Wild`, `WildDrawFour`
+
+Wild and WildDrawFour require the `choose_color` field:
+
+```json
+"choose_color": "Blue"
+```
+
+#### Example Client → Server Messages
+
+##### Start game
+
+```json
+{"type":"Uno","data":{"action":"start","game_id":"room123","player_name":"Alice"}}
+```
+
+##### Play a card
+
+```json
+{"type":"Uno","data":{"action":"play_card","game_id":"room123","player_name":"Alice","card":{"color":"Red","rank":"5"}}}
+```
+
+##### Play Wild
+
+```json
+{"type":"Uno","data":{"action":"play_card","game_id":"room123","player_name":"Alice","card":{"color":"Wild","rank":"Wild"},"choose_color":"Blue"}}
+```
+
+##### Draw a card
+
+```json
+{"type":"Uno","data":{"action":"draw_card","game_id":"room123","player_name":"Alice"}}
+```
+
+##### Pass turn
+
+```json
+{"type":"Uno","data":{"action":"pass_turn","game_id":"room123","player_name":"Alice"}}
+```
+
+##### Request state
+
+```json
+{"type":"Uno","data":{"action":"request_state","game_id":"room123","player_name":"Alice"}}
+```
+
+#### Server → Client: Public Game State Broadcast
+
+Sent after every action.
+
+```json
+{
+  "type": "Uno",
+  "data": {
+    "game_id": "room123",
+    "players": ["Ada", "Alan", "Geoffrey"],
+    "current_idx": 0,
+    "public_counts": [7, 7, 7],
+    "top_discard": { "color": "Red", "rank": "5" },
+    "chosen_color": "Red",
+    "pending_draw": 0,
+    "winner": null
+  }
+}
+```
+
+Meaning of fields:
+
+- `players` — list of players in turn order
+- `current_idx` — whose turn it is
+- `public_counts` — number of cards each player holds
+- `top_discard` — visible discard
+- `chosen_color` — color chosen after Wild/WDF
+- `pending_draw` — number of cards the next player must draw
+- `winner` — name of winning player, if any
+
+#### Server → Client: Private Hand Message
+
+Only sent to the specific player.
+
+```json
+{
+  "type": "Uno",
+  "data": {
+    "game_id": "room123",
+    "hand": [
+      { "color": "Red", "rank": "5" },
+      { "color": "Green", "rank": "Reverse" }
+    ]
+  }
+}
+```
+
+#### Game Lifecycle & Rules Summary
+
+Uno begins when **at least two players have joined the room**. A player may send `action: "start"` at any time after two players are present. Additional players (3–10 recommended) may still join **before** the first round begins.
+
+After the game starts:
+
+- Cards are dealt (default: 7 per player).
+- A top discard card is revealed.
+- `current_idx` is set to the first player in the `players` list.
+- The server immediately broadcasts the first public snapshot.
+- Each player receives a **private hand** message.
+
+General rules enforced by backend:
+
+- Only the player whose index matches `current_idx` may act.
+- Every action (play/draw/pass) results in a **new broadcast**.
+- Illegal plays are rejected automatically (wrong turn, card not matchable, missing choose_color, card not owned, etc.).
+- Playing a Wild or WildDrawFour **always requires** sending `choose_color`.
+- After Wild/WDF, the discard color becomes the chosen color.
+- Wild and WildDrawFour can be played at any time.
+- DrawTwo and WildDrawFour generate a numeric `pending_draw` penalty.
+- Pending draw applies at the start of the penalized player's turn.
+- After pending draw resolves, the penalized player is **skipped**.
+- After each turn, the next player is `(current_idx + step) % players.len()`.
+- Reverse flips turn direction (only matters for 3+ players).
+- Skip simply jumps over the next player.
+- A player wins when their private hand length becomes 0, and `winner` is included in broadcasts.
+- After a win, the room may be reset using `GameRoom: { action: "reset" }`.
 
 ---
 

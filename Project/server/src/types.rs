@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::models::uno::model::UnoCard;
 
 // -------------------------------------------------------------
 // WEBSOCKET MESSAGES
@@ -13,6 +14,7 @@ pub enum ClientMessage {
     Chat(ChatPayload),
     TicTacToe(TicTacToePayloadToServer),
     RockPaperScissors(RockPaperScissorsPayloadToServer),
+    Uno(UnoPayloadToServer),
 }
 
 /// Messages sent from the server to the client.
@@ -24,6 +26,7 @@ pub enum ServerMessage {
     Chat(ChatPayload),
     TicTacToe(TicTacToePayloadToClient),
     RockPaperScissors(RockPaperScissorsPayloadToClient),
+    Uno(UnoPayloadToClient),
 }
 
 // -------------------------------------------------------------
@@ -103,4 +106,55 @@ pub struct RockPaperScissorsPayloadToClient {
     pub winner: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+}
+
+/// Payload received FROM the client for Uno
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct UnoPayloadToServer {
+    pub game_id: String, /// Game session identifier
+    pub player_name: String, /// Player sending the request
+    pub action: String, /// Action verb: "start", "play_card", "draw_card", "pass_turn", "call_uno", "request_state"
+    
+    #[serde(skip_serializing_if = "Option::is_none")] 
+    pub card: Option<UnoCard>, /// Optional card included when action == "play_card". UnoCard = { color: String, rank: String }
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub choose_color: Option<String>, /// Required when playing Wild / WildDrawFour; one of "Red","Yellow","Green","Blue" (non-binding UI hint only; does NOT lock color)
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub call_uno: Option<bool>, // If the client presses UNO at the moment they go to 1 card
+}
+
+
+/// Payload sent TO the client for Uno
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct UnoPayloadToClient {
+    pub game_id: String,     /// Game session identifier
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub players: Option<Vec<String>>, /// Seat order of players (public names). Index corresponds to turn order.
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_idx: Option<i32>, /// Current turn index into `players`
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<i8>, /// Direction of play clockwise or counterclockwise (1 or -1) 
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_discard: Option<UnoCard>, /// Top card on the discard pile
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chosen_color: Option<String>, /// Non-binding color hint chosen on Wild/WDF; does NOT restrict rank plays
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pending_draw: Option<u8>, /// If someone owes a draw due to DrawTwo/WildDrawFour
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_counts: Option<Vec<u8>>,  /// Public info: hand sizes in seat order (no card identities)
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hand: Option<Vec<UnoCard>>, /// Private hand for the receiving client only
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub winner: Option<String>,
 }

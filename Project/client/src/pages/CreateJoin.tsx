@@ -7,17 +7,18 @@ import { useNavigate } from "react-router-dom";
 
 export default function CreateJoin() {
   const navigate = useNavigate();
-  const { 
-    playerName, 
-    setPlayerName, 
-    gameId, 
+  const {
+    playerName,
+    setPlayerName,
+    gameId,
     setGameId,
     setPlayers,
     setBoard,
     setStatus,
-    setWhosTurn
+    setWhosTurn,
+    gameType,
   } = useStore();
-  
+
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -40,14 +41,19 @@ export default function CreateJoin() {
       setError("Enter your name");
       return;
     }
-    
+
+    if (!gameType) {
+      setError("Game type not selected");
+      return;
+    }
+
     setError("");
     setIsCreating(true);
 
     // Generate new game ID
     const newGameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    // ✅ Clear any previous game state
+
+    // Clear any previous game state
     setPlayers([]);
     setBoard([
       [0, 0, 0],
@@ -56,17 +62,17 @@ export default function CreateJoin() {
     ]);
     setStatus("waiting");
     setWhosTurn("");
-    
+
     // Store player name in sessionStorage
     sessionStorage.setItem("playerName", playerName);
-    
-    console.log(`[CreateJoin] Creating game ${newGameId} for ${playerName}`);
+
+    console.log(`[CreateJoin] Creating ${gameType} game ${newGameId} for ${playerName}`);
     setGameId(newGameId);
-    
+
     ws.send({
       type: "GameRoom",
       data: {
-        game: "tictactoe",
+        game: gameType,
         action: "join",
         player_name: playerName,
         game_id: newGameId,
@@ -82,13 +88,18 @@ export default function CreateJoin() {
       setError("Enter both name and game code");
       return;
     }
-    
+
+    if (!gameType) {
+      setError("Game type not selected");
+      return;
+    }
+
     setError("");
     setIsJoining(true);
-    
+
     const game_id = joinCode.toUpperCase();
-    
-    // ✅ Clear any previous game state
+
+    // Clear any previous game state
     setPlayers([]);
     setBoard([
       [0, 0, 0],
@@ -97,17 +108,17 @@ export default function CreateJoin() {
     ]);
     setStatus("waiting");
     setWhosTurn("");
-    
+
     // Store player name in sessionStorage
     sessionStorage.setItem("playerName", playerName);
-    
-    console.log(`[CreateJoin] ${playerName} joining game ${game_id}`);
+
+    console.log(`[CreateJoin] ${playerName} joining ${gameType} game ${game_id}`);
     setGameId(game_id);
-    
+
     ws.send({
       type: "GameRoom",
       data: {
-        game: "tictactoe",
+        game: gameType,
         action: "join",
         player_name: playerName,
         game_id,
@@ -116,6 +127,12 @@ export default function CreateJoin() {
 
     // Reset joining state after a delay
     setTimeout(() => setIsJoining(false), 1000);
+  };
+
+  const getGameTitle = () => {
+    if (gameType === "tictactoe") return "Tic Tac Toe";
+    if (gameType === "rockpaperscissors") return "Rock Paper Scissors";
+    return "Game";
   };
 
   return (
@@ -127,8 +144,10 @@ export default function CreateJoin() {
       }}
     >
       <Stack gap="md" mt="sm" style={{ minWidth: 400 }}>
-        <Title order={3} ta="center">Start or Join a Match</Title>
-        
+        <Title order={3} ta="center">
+          {getGameTitle()} - Start or Join
+        </Title>
+
         {error && (
           <Alert color="red" withCloseButton onClose={() => setError("")}>
             {error}
@@ -145,9 +164,11 @@ export default function CreateJoin() {
         />
 
         <Stack gap="sm">
-          <Text size="sm" fw={600} c="dimmed">Create New Game</Text>
-          <Button 
-            onClick={onCreate} 
+          <Text size="sm" fw={600} c="dimmed">
+            Create New Game
+          </Text>
+          <Button
+            onClick={onCreate}
             color="teal"
             loading={isCreating}
             fullWidth
@@ -160,7 +181,9 @@ export default function CreateJoin() {
         <Divider label="OR" labelPosition="center" />
 
         <Stack gap="sm">
-          <Text size="sm" fw={600} c="dimmed">Join Existing Game</Text>
+          <Text size="sm" fw={600} c="dimmed">
+            Join Existing Game
+          </Text>
           <TextInput
             label="Game Code"
             placeholder="e.g. ABCD12"
@@ -169,7 +192,7 @@ export default function CreateJoin() {
             required
             size="md"
           />
-          <Button 
+          <Button
             onClick={onJoin}
             color="blue"
             loading={isJoining}

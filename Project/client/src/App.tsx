@@ -1,14 +1,16 @@
 // client/src/App.tsx
 import { useEffect, useState } from "react";
-import { Container, Title, Alert } from "@mantine/core";
+import { Container, Title } from "@mantine/core";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ws, type ServerMsg } from "./api/ws";
 import { useStore } from "./state/store";
 import CreateJoin from "./pages/CreateJoin";
 import Match from "./pages/Match";
 import Board from "./pages/Board";
+import RockPaperScissors from "./pages/RockPaperScissor";
 import Dashboard from "./components/Dashboard";
 import bg from "./assets/bg20.jpg";
+import Uno from "./pages/Uno";
 
 function AppRoutes() {
   const [error, setError] = useState("");
@@ -43,7 +45,6 @@ function AppRoutes() {
     });
 
     const offMsg = ws.onMessage((msg: ServerMsg) => {
-      console.log("[App] Global message received:", msg);
 
       switch (msg.type) {
         case "Echo":
@@ -87,8 +88,22 @@ function AppRoutes() {
           break;
         }
 
+        case "RockPaperScissors": {
+          console.log("[App] RockPaperScissors update:", msg.data);
+          // RPS component will handle its own state
+          break;
+        }
+
+        case "Uno": {
+          // Uno component will handle its own state
+          break;
+        }
+
         case "Chat": {
-          addChatMessage(msg.data);
+          // Only add messages with action "broadcast" from server
+          if (msg.data.action === "broadcast") {
+            addChatMessage(msg.data);
+          }
           break;
         }
 
@@ -106,33 +121,20 @@ function AppRoutes() {
   }, [setGameId, setBoard, setWhosTurn, setGameStatus, addChatMessage, setPlayers]);
 
   return (
-    <>
-      {/* Connection status alerts */}
-      {/* {status === "disconnected" && (
-        <Alert color="yellow" mb="md" style={{ textAlign: "center" }}>
-          ⚠️ Connecting to server...
-        </Alert>
-      )}
+    <Routes>
+      {/* 🧭 Default route */}
+      <Route path="/" element={<Dashboard />} />
 
-      {error && (
-        <Alert color="red" mb="md" withCloseButton onClose={() => setError("")}>
-          {error}
-        </Alert>
-      )} */}
+      {/* 🧭 Game Routes */}
+      <Route path="/createjoin" element={<CreateJoin />} />
+      <Route path="/match/:id" element={<Match />} />
+      <Route path="/board/:id" element={<Board />} />
+      <Route path="/rockpaperscissors/:id" element={<RockPaperScissors />} />
+      <Route path="/uno/:id" element={<Uno />}  />
 
-      <Routes>
-        {/* 🧭 Default route */}
-        <Route path="/" element={<Dashboard />} />
-
-        {/* 🧭 Game Routes */}
-        <Route path="/createjoin" element={<CreateJoin />} />
-        <Route path="/match/:id" element={<Match />} />
-        <Route path="/board/:id" element={<Board />} />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </>
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
 

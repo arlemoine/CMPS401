@@ -12,8 +12,8 @@ export default function Match() {
   const location = useLocation();
   const hasJoined = useRef(false);
   const hasNavigated = useRef(false);
-  
-  // ✅ Track if user came from board (back button)
+
+  // Track if user came from board (back button)
   const cameFromBoard = useRef(false);
 
   const {
@@ -28,6 +28,7 @@ export default function Match() {
     setStatus,
     addChatMessage,
     setPlayerName,
+    gameType,
   } = useStore();
 
   // Sync gameId from URL
@@ -35,7 +36,7 @@ export default function Match() {
     if (id && id !== gameId) setGameId(id);
   }, [id, gameId, setGameId]);
 
-  // ✅ Detect if coming from board page (back button pressed)
+  // Detect if coming from board page (back button pressed)
   useEffect(() => {
     const fromBoard = location.state?.fromBoard === true;
     if (fromBoard) {
@@ -44,12 +45,15 @@ export default function Match() {
     }
   }, [location]);
 
-  // ✅ Auto-navigate when 2 players are ready (but NOT if came from board)
+  // Auto-navigate when 2 players are ready (but NOT if came from board)
   useEffect(() => {
+    // For Uno, we might want to allow more than 2 players
+    const minPlayers = gameType === "uno" ? 2 : 2;
+    
     if (
-      players.length === 2 && 
-      !hasNavigated.current && 
-      !cameFromBoard.current && // ✅ Don't auto-navigate if user pressed back
+      players.length >= minPlayers &&
+      !hasNavigated.current &&
+      !cameFromBoard.current &&
       id
     ) {
       hasNavigated.current = true;
@@ -57,11 +61,18 @@ export default function Match() {
       setStatus("IN_PROGRESS");
 
       setTimeout(() => {
-        console.log("[Match] Navigating to board...");
-        navigate(`/board/${id}`, { replace: false }); // Don't replace history
+        console.log(`[Match] Navigating to ${gameType} board...`);
+        // Route to appropriate board based on game type
+        if (gameType === "rockpaperscissors") {
+          navigate(`/rockpaperscissors/${id}`, { replace: false });
+        } else if (gameType === "uno") {
+          navigate(`/uno/${id}`, { replace: false });
+        } else {
+          navigate(`/board/${id}`, { replace: false });
+        }
       }, 1000);
     }
-  }, [players.length, id, navigate, setStatus]);
+  }, [players.length, id, navigate, setStatus, gameType]);
 
   useEffect(() => {
     ws.connect();
@@ -87,16 +98,22 @@ export default function Match() {
         if (whos_turn) setWhosTurn(whos_turn);
         if (gameStatus) setStatus(gameStatus);
 
-        // ✅ Only auto-navigate if not came from board
+        // Only auto-navigate if not came from board
         if (
-          gameStatus === "IN_PROGRESS" && 
-          !hasNavigated.current && 
+          gameStatus === "IN_PROGRESS" &&
+          !hasNavigated.current &&
           !cameFromBoard.current
         ) {
           hasNavigated.current = true;
           console.log("[Match] Game status IN_PROGRESS, navigating to board");
           navigate(`/board/${id}`);
         }
+      }
+
+      if (msg.type === "RockPaperScissors") {
+        // Handle RPS updates but don't auto-navigate on status changes
+        // The player count check above handles initial navigation
+        console.log("[Match] RPS update received:", msg.data);
       }
 
       if (msg.type === "GameRoom") {
@@ -113,7 +130,7 @@ export default function Match() {
 
         if (action === "reset") {
           hasNavigated.current = false;
-          cameFromBoard.current = false; // ✅ Reset on game reset
+          cameFromBoard.current = false;
           setBoard([
             [0, 0, 0],
             [0, 0, 0],
@@ -125,23 +142,26 @@ export default function Match() {
 
         if (action === "leave") {
           hasNavigated.current = false;
-          cameFromBoard.current = false; // ✅ Reset on leave
+          cameFromBoard.current = false;
         }
       }
 
       if (msg.type === "Chat") {
-        addChatMessage(msg.data);
+        // Only add messages with action "broadcast" from server
+        if (msg.data.action === "broadcast") {
+          addChatMessage(msg.data);
+        }
       }
     });
 
-    if (id && playerName && !hasJoined.current) {
+    if (id && playerName && !hasJoined.current && gameType) {
       hasJoined.current = true;
-      console.log(`[Match] ${playerName} joining game ${id}`);
+      console.log(`[Match] ${playerName} joining ${gameType} game ${id}`);
 
       ws.send({
         type: "GameRoom",
         data: {
-          game: "tictactoe",
+          game: gameType,
           action: "join",
           player_name: playerName,
           game_id: id,
@@ -162,27 +182,34 @@ export default function Match() {
     setPlayers,
     addChatMessage,
     navigate,
+    gameType,
   ]);
 
   const handleGoToBoard = () => {
     if (players.length === 2) {
-      cameFromBoard.current = false; // ✅ Reset flag when manually navigating
-      navigate(`/board/${id}`);
+      cameFromBoard.current = false;
+      if (gameType === "rockpaperscissors") {
+        navigate(`/rockpaperscissors/${id}`);
+      } else if (gameType === "uno") {
+        navigate(`/uno/${id}`);
+      } else {
+        navigate(`/board/${id}`);
+      }
     } else {
       console.warn("[Match] Cannot go to board, waiting for 2 players");
     }
   };
 
   const handlePlayAgain = () => {
-    if (!id) return;
+    if (!id || !gameType) return;
 
     hasNavigated.current = false;
-    cameFromBoard.current = false; // ✅ Reset flag
+    cameFromBoard.current = false;
 
     ws.send({
       type: "GameRoom",
       data: {
-        game: "tictactoe",
+        game: gameType,
         action: "reset",
         player_name: playerName,
         game_id: id,
@@ -201,11 +228,11 @@ export default function Match() {
   const handleMainMenu = () => {
     console.log("[Match] Leaving game and going to main menu");
 
-    if (id && playerName) {
+    if (id && playerName && gameType) {
       ws.send({
         type: "GameRoom",
         data: {
-          game: "tictactoe",
+          game: gameType,
           action: "leave",
           player_name: playerName,
           game_id: id,
@@ -237,9 +264,18 @@ export default function Match() {
     ? "IN_PROGRESS"
     : "WAITING";
 
+  const getGameTitle = () => {
+    if (gameType === "tictactoe") return "Tic Tac Toe";
+    if (gameType === "rockpaperscissors") return "Rock Paper Scissors";
+    if (gameType === "uno") return "Uno";
+    return "Game";
+  };
+
   return (
     <Stack gap="md" mt="lg">
-      <Title order={3}>Game Room: {id}</Title>
+      <Title order={3}>
+        {getGameTitle()} Room: {id}
+      </Title>
 
       <Group>
         <Text>Status:</Text>
@@ -267,9 +303,7 @@ export default function Match() {
             {p} {p === playerName && "(You)"}
           </Text>
         ))}
-        {players.length < 2 && (
-          <Text c="dimmed">Waiting for another player...</Text>
-        )}
+        {players.length < 2 && <Text c="dimmed">Waiting for another player...</Text>}
         {players.length === 2 && (
           <Text c="green" fw={600}>
             ✅ Ready to start!
