@@ -177,7 +177,7 @@ export default function App() {
             }}
           >
             <Title order={1} ta="center">
-              🎮 Multiplayer Game Prototype
+              🎮 Cargo Games 
             </Title>
           </div>
 
