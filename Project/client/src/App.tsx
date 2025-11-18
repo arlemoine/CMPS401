@@ -13,8 +13,8 @@ import bg from "./assets/bg20.jpg";
 import Uno from "./pages/Uno";
 
 function AppRoutes() {
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState<"connected" | "disconnected">("disconnected");
+  const [, setError] = useState("");
+  const [, setStatus] = useState<"connected" | "disconnected">("disconnected");
 
   const {
     setGameId,

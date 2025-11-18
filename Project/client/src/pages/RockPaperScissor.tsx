@@ -23,7 +23,6 @@ export default function RockPaperScissors() {
   const navigate = useNavigate();
   const { 
     playerName, 
-    players, 
     setPlayers, 
     setGameId, 
     setPlayerName, 

@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   Box,
   TextInput,
-  Button,
   ScrollArea,
   Paper,
   Text,
